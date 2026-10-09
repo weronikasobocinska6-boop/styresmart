@@ -2,71 +2,82 @@ import streamlit as st
 import requests
 import datetime
 import calendar
-import sqlite3
+import json
+import os
 
 # ==========================================
-# 1. KONFIGURACJA BAZY DANYCH (SQLite)
+# 1. ZARZĄDZANIE DANYMI (Trwały plik JSON)
 # ==========================================
-DB_FILE = "styresmart.db"
+DB_PATH = "baza_danych.json"
 
-def init_db():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    # Tabela beboerów
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS beboere (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            navn TEXT,
-            epost TEXT UNIQUE,
-            seksjon TEXT
-        )
-    ''')
-    # Tabela dokumentów i notatek powiązanych z beboerami
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS beboer_data (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            epost TEXT,
-            typ TEXT, -- 'dokument' eller 'korrespondanse'
-            tittel TEXT,
-            detaljer TEXT,
-            dato TEXT
-        )
-    ''')
-    conn.commit()
-    
-    # Sprawdzamy czy tabela beboerów jest pusta – jeśli tak, wrzucamy domyślną listę 16 beboerów
-    c.execute("SELECT COUNT(*) FROM beboere")
-    if c.fetchone()[0] == 0:
-        domyslne_beboere = [
-            ("Akram Zalmai", "zalmai44@gmail.com", "Seksjon 1"),
-            ("Galina Novikova", "ngiv1005@gmail.com", "Seksjon 2"),
-            ("etasje oppgang B", "asammad35@hotmail.com", "Oppgang B"),
-            ("Gina Hetlevik", "gin-he@online.no", "Seksjon 3"),
-            ("Gry Kjersti Berget", "gberget@deloitte.no", "Seksjon 4"),
-            ("Ingeborg Skoveng", "ingeborg@skoveng.no", "Seksjon 5"),
-            ("Ingelise Brynlund", "ingelise.brynlund@gmail.com", "Seksjon 6"),
-            ("Mads K", "madk1515@gmail.com", "Seksjon 7"),
-            ("Stig Schmidt", "sschm@frisurf.no", "Seksjon 8"),
-            ("Terje Aarborgh", "taarbogh@gmail.com", "Seksjon 9"),
-            ("Ine Foss", "ine@kvikkerehoder.no", "Seksjon 10"),
-            ("Tom Bergersen", "tom.bergersen1@gmail.com", "Seksjon 11"),
-            ("Sultan Bhatti", "Sultan.bhatti91@outlook.com", "Seksjon 12"),
-            ("Cecilia", "ce.ma.andersson@gmail.com", "Seksjon 13"),
-            ("Weronika Sobocinska", "weronikasobocinska6@gmail.com", "Seksjon 14"),
-            ("Mona Schmidt", "moirol@wemail.no", "Seksjon 15")
-        ]
-        c.executemany("INSERT OR IGNORE INTO beboere (navn, epost, seksjon) VALUES (?, ?, ?)", domyslne_beboere)
-        conn.commit()
-        
-        # Przykładowy wpis dla Akrama
-        c.execute("INSERT INTO beboer_data (epost, typ, tittel, detaljer, dato) VALUES (?, ?, ?, ?, ?)",
-                  ("zalmai44@gmail.com", "dokument", "Tidligere klage på vannlekkasje", "Klage_Vannlekkasje_2024.pdf", "09.10.2026"))
-        c.execute("INSERT INTO beboer_data (epost, typ, tittel, detaljer, dato) VALUES (?, ?, ?, ?, ?)",
-                  ("zalmai44@gmail.com", "korrespondanse", "Vannlekkasje fra taket på badet", "Rapportert drypping fra overliggende leilighet.", "09.10.2026"))
-        conn.commit()
-    conn.close()
+DOMYSLNE_DANE = {
+    "beboere": [
+        {"Navn": "Akram Zalmai", "E-post": "zalmai44@gmail.com", "Seksjon": "Seksjon 1"},
+        {"Navn": "Galina Novikova", "E-post": "ngiv1005@gmail.com", "Seksjon": "Seksjon 2"},
+        {"Navn": "etasje oppgang B", "E-post": "asammad35@hotmail.com", "Seksjon": "Oppgang B"},
+        {"Navn": "Gina Hetlevik", "E-post": "gin-he@online.no", "Seksjon": "Seksjon 3"},
+        {"Navn": "Gry Kjersti Berget", "E-post": "gberget@deloitte.no", "Seksjon": "Seksjon 4"},
+        {"Navn": "Ingeborg Skoveng", "E-post": "ingeborg@skoveng.no", "Seksjon": "Seksjon 5"},
+        {"Navn": "Ingelise Brynlund", "E-post": "ingelise.brynlund@gmail.com", "Seksjon": "Seksjon 6"},
+        {"Navn": "Mads K", "E-post": "madk1515@gmail.com", "Seksjon": "Seksjon 7"},
+        {"Navn": "Stig Schmidt", "E-post": "sschm@frisurf.no", "Seksjon": "Seksjon 8"},
+        {"Navn": "Terje Aarborgh", "E-post": "taarbogh@gmail.com", "Seksjon": "Seksjon 9"},
+        {"Navn": "Ine Foss", "E-post": "ine@kvikkerehoder.no", "Seksjon": "Seksjon 10"},
+        {"Navn": "Tom Bergersen", "E-post": "tom.bergersen1@gmail.com", "Seksjon": "Seksjon 11"},
+        {"Navn": "Sultan Bhatti", "E-post": "Sultan.bhatti91@outlook.com", "Seksjon": "Seksjon 12"},
+        {"Navn": "Cecilia", "E-post": "ce.ma.andersson@gmail.com", "Seksjon": "Seksjon 13"},
+        {"Navn": "Weronika Sobocinska", "E-post": "weronikasobocinska6@gmail.com", "Seksjon": "Seksjon 14"},
+        {"Navn": "Mona Schmidt", "E-post": "moirol@wemail.no", "Seksjon": "Seksjon 15"}
+    ],
+    "beboer_data": {
+        "zalmai44@gmail.com": {
+            "dokumenter": [
+                {"tittel": "Tidligere klage på vannlekkasje", "filnavn": "Klage_Vannlekkasje_2024.pdf"},
+                {"tittel": "Foto av baderomstak", "filnavn": "Bilde_av_tak_bad.jpg"}
+            ],
+            "korrespondanse": [
+                {"dato": "09.10.2026", "emne": "Vannlekkasje fra taket på badet", "innhold": "Rapportert drypping fra overliggende leilighet (etasje oppgang B). Styret har avvist ansvar jf. eierseksjonsloven."}
+            ]
+        }
+    },
+    "bygg_mapper": {
+        "Forsikring": [{"tittel": "Forsikringsavtale If", "filnavn": "Forsikringsavtale_If_2026.pdf"}],
+        "Tegninger & Bygg": [{"tittel": "Plantegninger 1. etg", "filnavn": "Plantegninger_Kirkegata_6.pdf"}],
+        "Økonomi & Budsjett": [
+            {"tittel": "Nytt budsjett 2027", "filnavn": "Nytt_budsjett_2027_Sameiet_K6.xlsx"},
+            {"tittel": "Budsjett 2027 Sameiet K6", "filnavn": "Budsjett_2027_Sameiet_K6.pdf"},
+            {"tittel": "507 - Årsregnskap 2025", "filnavn": "507_Aarsregnskap_2025.pdf"},
+            {"tittel": "507 - Økonomirapport pr. Q3 2026", "filnavn": "507_Oekonomirapport_pr_Q3_2026.pdf"}
+        ],
+        "Møtereferater": []
+    },
+    "kalender_oppgaver": [
+        {"id": 1, "dato": "2026-10-11", "tid": "18:00", "oppgave": "Styremøte", "detaljer": "Gjennomgang av budsjett for 2027", "type": "Møte"},
+        {"id": 2, "dato": "2026-10-20", "tid": "18:00", "oppgave": "Ekstraordinært Årsmøte", "detaljer": "Behandling av budsjett og økning av felleskostnader", "type": "Møte"}
+    ]
+}
 
-init_db()
+def wczytaj_dane():
+    if os.path.exists(DB_PATH):
+        try:
+            with open(DB_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            return DOMYSLNE_DANE
+    else:
+        zapisz_dane(DOMYSLNE_DANE)
+        return DOMYSLNE_DANE
+
+def zapisz_dane(dane):
+    with open(DB_PATH, "w", encoding="utf-8") as f:
+        json.dump(dane, f, ensure_ascii=False, indent=4)
+
+# Ładowanie danych do st.session_state przy starcie
+if "db" not in st.session_state:
+    st.session_state.db = wczytaj_dane()
+
+# Skróty dla wygody
+db = st.session_state.db
 
 # ==========================================
 # 2. DESIGN OG OPPSETT (Nordisk stil)
@@ -233,7 +244,7 @@ st.markdown('''
 ''', unsafe_allow_html=True)
 
 # ==========================================
-# 3. SESJONSSTATE OG SIKKERHET (INNLOGGING)
+# 3. SIKKERHET (INNLOGGING)
 # ==========================================
 api_key = st.secrets.get("GEMINI_API_KEY", "")
 ai_klar = bool(api_key)
@@ -270,31 +281,12 @@ if not st.session_state.er_logget_inn:
 if "epost_utkast" not in st.session_state: st.session_state.epost_utkast = ""
 if "fellesmelding_utkast" not in st.session_state: st.session_state.fellesmelding_utkast = ""
 if "innlogget_bruker" not in st.session_state: st.session_state.innlogget_bruker = "Weronika Bhatti"
-if "valgt_beboer_epost" not in st.session_state: st.session_state.valgt_beboer_epost = None
-if "redigerer_beboer" not in st.session_state: st.session_state.redigerer_beboer = False
 if "vis_ny_mappe_form" not in st.session_state: st.session_state.vis_ny_mappe_form = False
 if "vis_last_opp_form" not in st.session_state: st.session_state.vis_last_opp_form = False
+if "valgt_beboer_index" not in st.session_state: st.session_state.valgt_beboer_index = None
+if "redigerer_beboer" not in st.session_state: st.session_state.redigerer_beboer = False
 if "redigerer_kalender_id" not in st.session_state: st.session_state.redigerer_kalender_id = None
-
-if "bygg_mapper" not in st.session_state:
-    st.session_state.bygg_mapper = {
-        "Forsikring": [{"tittel": "Forsikringsavtale If", "filnavn": "Forsikringsavtale_If_2026.pdf"}],
-        "Tegninger & Bygg": [{"tittel": "Plantegninger 1. etg", "filnavn": "Plantegninger_Kirkegata_6.pdf"}],
-        "Økonomi & Budsjett": [
-            {"tittel": "Nytt budsjett 2027", "filnavn": "Nytt_budsjett_2027_Sameiet_K6.xlsx"},
-            {"tittel": "Budsjett 2027 Sameiet K6", "filnavn": "Budsjett_2027_Sameiet_K6.pdf"},
-            {"tittel": "507 - Årsregnskap 2025", "filnavn": "507_Aarsregnskap_2025.pdf"},
-            {"tittel": "507 - Økonomirapport pr. Q3 2026", "filnavn": "507_Oekonomirapport_pr_Q3_2026.pdf"}
-        ],
-        "Møtereferater": []
-    }
-
-if "kalender_oppgaver" not in st.session_state:
-    st.session_state.kalender_oppgaver = [
-        {"id": 1, "dato": "2026-10-11", "tid": "18:00", "oppgave": "Styremøte", "detaljer": "Gjennomgang av budsjett for 2027", "type": "Møte"},
-        {"id": 2, "dato": "2026-10-20", "tid": "18:00", "oppgave": "Ekstraordinært Årsmøte", "detaljer": "Behandling av budsjett og økning av felleskostnader", "type": "Møte"},
-        {"id": 3, "dato": "2026-11-01", "tid": "10:00", "oppgave": "Snømåkeavtale", "detaljer": "Inngå avtale om snømåking og strøing", "type": "Generell"}
-    ]
+if "vis_ny_beboer_form" not in st.session_state: st.session_state.vis_ny_beboer_form = False
 
 # Sidebar
 with st.sidebar:
@@ -333,10 +325,11 @@ with st.sidebar:
 st.title("Styreportal")
 fane1, fane2, fane3, fane4, fane5 = st.tabs(["Innboks", "Beboere", "Arkiv", "Kalender", "Jus"])
 
-# Fane 1
+# ----------------- FANE 1: INNBOKS -----------------
 with fane1:
     st.write("<br>", unsafe_allow_html=True)
     kol1, kol2 = st.columns([1.2, 1])
+    
     with kol1:
         st.markdown('''
         <div class="viktig-boks">
@@ -384,138 +377,155 @@ with fane1:
             if st.button("Publiser til beboere", key="publiser_1"): 
                 st.success(f"Fellesmelding publisert av {st.session_state.innlogget_bruker}!")
 
-# Fane 2 (Beboere med SQLite Database lagring)
+# ----------------- FANE 2: BEBOERE (Zapis do pliku JSON) -----------------
 with fane2:
     st.markdown("### Personregister")
-    st.write(f"Innlogget som: **{st.session_state.innlogget_bruker}**. Klikk på **Åpne profil** på en beboer for å se samlet korrespondanse, dokumenter eller redigere.")
+    st.write(f"Innlogget som: **{st.session_state.innlogget_bruker}**. Klikk på **Åpne profil** for å se samlet korrespondanse, dokumenter eller redigere.")
     st.write("<br>", unsafe_allow_html=True)
     
-    # Hent beboere fra SQLite
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("SELECT navn, epost, seksjon FROM beboere")
-    db_beboere = [{"Navn": row[0], "E-post": row[1], "Seksjon": row[2]} for row in c.fetchall()]
-    conn.close()
-
-    valgt_epost = st.session_state.valgt_beboer_epost
-    if valgt_epost:
-        # Znajdź wybranego beboera
-        akt_beboer = next((b for b in db_beboere if b["E-post"] == valgt_epost), None)
-        if akt_beboer:
-            st.markdown(f'''
-            <div class="nordic-card" style="border-top: 3px solid #738269;">
-                <div class="nordic-meta">Valgt Beboerprofil</div>
-                <h3 style="margin-top: 0; color: #1A1A1A;">👤 {akt_beboer['Navn']} — {akt_beboer['Seksjon']}</h3>
-                <p style="color: #666666; font-size: 0.95em;">E-post: <strong>{akt_beboer['E-post']}</strong></p>
-            </div>
-            ''', unsafe_allow_html=True)
+    # Przycisk dodawania nowego mieszkańca
+    if st.button("➕ Legg til ny beboer"):
+        st.session_state.vis_ny_beboer_form = not st.session_state.vis_ny_beboer_form
+        
+    if st.session_state.vis_ny_beboer_form:
+        st.markdown('''<div class="nordic-card">''', unsafe_allow_html=True)
+        st.markdown('''<div class="nordic-meta">Legg til ny beboer</div>''', unsafe_allow_html=True)
+        with st.form("form_ny_beboer"):
+            n_navn = st.text_input("Fullt navn:")
+            n_epost = st.text_input("E-postadresse:")
+            n_seksjon = st.text_input("Seksjon / Leilighet:", placeholder="F.eks: Seksjon 4")
             
-            k_rad1, k_rad2, _ = st.columns([1.2, 1.2, 3])
-            with k_rad1:
-                if st.button("Rediger opplysninger", key="btn_toggle_edit"):
-                    st.session_state.redigerer_beboer = not st.session_state.redigerer_beboer
-            with k_rad2:
-                if st.button("Lukk profil", key="btn_lukk_profil"):
-                    st.session_state.valgt_beboer_epost = None
-                    st.session_state.redigerer_beboer = False
-                    st.rerun()
-
-            if st.session_state.redigerer_beboer:
-                st.markdown('''<div class="nordic-card">''', unsafe_allow_html=True)
-                st.markdown('''<div class="nordic-meta">Rediger Beboeropplysninger</div>''', unsafe_allow_html=True)
-                with st.form("form_rediger_beboer"):
-                    nytt_navn = st.text_input("Fullt navn:", value=akt_beboer["Navn"])
-                    ny_epost = st.text_input("E-postadresse:", value=akt_beboer["E-post"])
-                    ny_seksjon = st.text_input("Seksjon / Leilighet:", value=akt_beboer["Seksjon"])
-                    
-                    if st.form_submit_button("Lagre endringer i databasen"):
-                        conn = sqlite3.connect(DB_FILE)
-                        c = conn.cursor()
-                        c.execute("UPDATE beboere SET navn=?, epost=?, seksjon=? WHERE epost=?", 
-                                  (nytt_navn, ny_epost, ny_seksjon, b_epost))
-                        conn.commit()
-                        conn.close()
-                        st.session_state.redigerer_beboer = False
-                        st.session_state.valgt_beboer_epost = ny_epost
-                        st.success(f"Oppdatert i databasen av {st.session_state.innlogget_bruker}!")
+            c_s1, c_s2 = st.columns([1, 4])
+            with c_s1:
+                if st.form_submit_button("Lagre beboer"):
+                    if n_navn and n_epost:
+                        db["alle_beboere"].append({"Navn": n_navn, "E-post": n_epost, "Seksjon": n_seksjon})
+                        zapisz_dane(db)
+                        st.session_state.vis_ny_beboer_form = False
+                        st.success("Mottager ble lagt til i registeret!")
                         st.rerun()
-                st.markdown('''</div>''', unsafe_allow_html=True)
+            with c_s2:
+                if st.form_submit_button("Avbryt"):
+                    st.session_state.vis_ny_beboer_form = False
+                    st.rerun()
+        st.markdown('''</div>''', unsafe_allow_html=True)
 
-            # Pobierz dane (dokumenty i korrespondencję) z bazy
-            conn = sqlite3.connect(DB_FILE)
-            c = conn.cursor()
-            c.execute("SELECT typ, tittel, detaljer, dato FROM beboer_data WHERE epost=?", (valgt_epost,))
-            rows = c.fetchall()
-            conn.close()
-            
-            p_dok = [ {"tittel": r[1], "filnavn": r[2]} for r in rows if r[0] == 'dokument' ]
-            p_korr = [ {"tittel": r[1], "detaljer": r[2], "dato": r[3]} for r in rows if r[0] == 'korrespondanse' ]
+    st.write("<br>", unsafe_allow_html=True)
 
-            c_dok, c_korr = st.columns(2)
-            with c_dok:
-                st.markdown('''<h4 style="color: #1A1A1A; margin-top: 15px;">Tilknyttede Dokumenter</h4>''', unsafe_allow_html=True)
-                if not p_dok:
-                    st.markdown('''<p style="color: #888888; font-style: italic; font-size: 0.9em;">Ingen dokumenter lagret.</p>''', unsafe_allow_html=True)
-                else:
-                    for d in p_dok:
-                        st.markdown(f'''
-                        <div class="dok-kort">
-                            <div>
-                                <span style="font-weight: 600; color: #1A1A1A;">{d['tittel']}</span><br>
-                                <span style="color: #777; font-size: 0.8em;">{d['filnavn']}</span>
-                            </div>
-                            <span class="dok-knapp">LAST NED</span>
+    if st.session_state.valgt_beboer_index is not None and st.session_state.valgt_beboer_index < len(db["alle_beboere"]):
+        idx = st.session_state.valgt_beboer_index
+        akt_beboer = db["alle_beboere"][idx]
+        b_epost = akt_beboer["E-post"]
+        
+        if b_epost not in db["beboer_data"]:
+            db["beboer_data"][b_epost] = {"dokumenter": [], "korrespondanse": []}
+        data_profil = db["beboer_data"][b_epost]
+
+        st.markdown(f'''
+        <div class="nordic-card" style="border-top: 3px solid #738269;">
+            <div class="nordic-meta">Valgt Beboerprofil</div>
+            <h3 style="margin-top: 0; color: #1A1A1A;">👤 {akt_beboer['Navn']} — {akt_beboer['Seksjon']}</h3>
+            <p style="color: #666666; font-size: 0.95em;">E-post: <strong>{akt_beboer['E-post']}</strong></p>
+        </div>
+        ''', unsafe_allow_html=True)
+        
+        k_rad1, k_rad2, k_rad3, _ = st.columns([1.2, 1.2, 1.2, 2])
+        with k_rad1:
+            if st.button("Rediger", key="btn_toggle_edit"):
+                st.session_state.redigerer_beboer = not st.session_state.redigerer_beboer
+        with k_rad2:
+            if st.button("Slett beboer", key="btn_slett_beboer"):
+                db["alle_beboere"].pop(idx)
+                zapisz_dane(db)
+                st.session_state.valgt_beboer_index = None
+                st.success("Beboer ble slettet.")
+                st.rerun()
+        with k_rad3:
+            if st.button("Lukk profil", key="btn_lukk_profil"):
+                st.session_state.valgt_beboer_index = None
+                st.session_state.redigerer_beboer = False
+                st.rerun()
+
+        if st.session_state.redigerer_beboer:
+            st.markdown('''<div class="nordic-card">''', unsafe_allow_html=True)
+            st.markdown('''<div class="nordic-meta">Rediger Beboeropplysninger</div>''', unsafe_allow_html=True)
+            with st.form("form_rediger_beboer"):
+                nytt_navn = st.text_input("Fullt navn:", value=akt_beboer["Navn"])
+                ny_epost = st.text_input("E-postadresse:", value=akt_beboer["E-post"])
+                ny_seksjon = st.text_input("Seksjon / Leilighet:", value=akt_beboer["Seksjon"])
+                
+                if st.form_submit_button("Lagre endringer"):
+                    if ny_epost != b_epost:
+                        db["beboer_data"][ny_epost] = db["beboer_data"].pop(b_epost, {"dokumenter": [], "korrespondanse": []})
+                    db["alle_beboere"][idx] = {"Navn": nytt_navn, "E-post": ny_epost, "Seksjon": ny_seksjon}
+                    zapisz_dane(db)
+                    st.session_state.redigerer_beboer = False
+                    st.success("Zapisano zmiany w bazie!")
+                    st.rerun()
+            st.markdown('''</div>''', unsafe_allow_html=True)
+
+        c_dok, c_korr = st.columns(2)
+        
+        with c_dok:
+            st.markdown('''<h4 style="color: #1A1A1A; margin-top: 15px;">Tilknyttede Dokumenter</h4>''', unsafe_allow_html=True)
+            if not data_profil["dokumenter"]:
+                st.markdown('''<p style="color: #888888; font-style: italic; font-size: 0.9em;">Ingen dokumenter lagret.</p>''', unsafe_allow_html=True)
+            else:
+                for d in data_profil["dokumenter"]:
+                    st.markdown(f'''
+                    <div class="dok-kort">
+                        <div>
+                            <span style="font-weight: 600; color: #1A1A1A;">{d['tittel']}</span><br>
+                            <span style="color: #777; font-size: 0.8em;">{d['filnavn']}</span>
                         </div>
-                        ''', unsafe_allow_html=True)
-                with st.expander("Last opp dokument"):
-                    with st.form("form_last_opp_person", clear_on_submit=True):
-                        pers_dok_tittel = st.text_input("Tittel på fil:")
-                        pers_fil = st.file_uploader("Velg dokument:")
-                        if st.form_submit_button("Lagre på beboer"):
-                            if pers_dok_tittel and pers_fil:
-                                conn = sqlite3.connect(DB_FILE)
-                                c = conn.cursor()
-                                c.execute("INSERT INTO beboer_data (epost, typ, tittel, detaljer, dato) VALUES (?, 'dokument', ?, ?, ?)",
-                                          (valgt_epost, pers_dok_tittel, pers_fil.name, datetime.date.today().strftime("%d.%m.%Y")))
-                                conn.commit()
-                                conn.close()
-                                st.success("Lagret i databasen!")
-                                st.rerun()
+                        <span class="dok-knapp">LAST NED</span>
+                    </div>
+                    ''', unsafe_allow_html=True)
+            with st.expander("Last opp dokument"):
+                with st.form("form_last_opp_person", clear_on_submit=True):
+                    pers_dok_tittel = st.text_input("Tittel på fil:")
+                    pers_fil = st.file_uploader("Velg dokument:")
+                    if st.form_submit_button("Lagre på beboer"):
+                        if pers_dok_tittel and pers_fil:
+                            data_profil["dokumenter"].append({"tittel": pers_dok_tittel, "filnavn": pers_fil.name})
+                            zapisz_dane(db)
+                            st.success("Zapisano dokument w bazie!")
+                            st.rerun()
 
-            with c_korr:
-                st.markdown('''<h4 style="color: #1A1A1A; margin-top: 15px;">Samtalehistorikk & E-poster</h4>''', unsafe_allow_html=True)
-                if not p_korr:
-                    st.markdown('''<p style="color: #888888; font-style: italic; font-size: 0.9em;">Ingen loggført korrespondanse.</p>''', unsafe_allow_html=True)
-                else:
-                    for k in p_korr:
-                        st.markdown(f'''
-                        <div style="background-color: #FFFFFF; padding: 14px 18px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin-bottom: 10px; border-left: 3px solid #738269;">
-                            <div style="font-size: 0.78em; color: #738269; font-weight: 700; text-transform: uppercase;">{k['dato']}</div>
-                            <div style="font-weight: 700; color: #1A1A1A; font-size: 0.98em; margin-top: 2px;">{k['tittel']}</div>
-                            <div style="color: #444; font-size: 0.9em; margin-top: 4px; line-height: 1.5;">{k['detaljer']}</div>
-                        </div>
-                        ''', unsafe_allow_html=True)
-                with st.expander("Loggfør nytt notat / samtale"):
-                    with st.form("form_ny_korr", clear_on_submit=True):
-                        ny_emne = st.text_input("Emne:")
-                        ny_tekst = st.text_area("Innhold / referat:")
-                        if st.form_submit_button("Legg til i database"):
-                            if ny_emne and ny_tekst:
-                                conn = sqlite3.connect(DB_FILE)
-                                c = conn.cursor()
-                                c.execute("INSERT INTO beboer_data (epost, typ, tittel, detaljer, dato) VALUES (?, 'korrespondanse', ?, ?, ?)",
-                                          (valgt_epost, f"{ny_emne} (Loggført av {st.session_state.innlogget_bruker})", ny_tekst, datetime.date.today().strftime("%d.%m.%Y")))
-                                conn.commit()
-                                conn.close()
-                                st.success("Lagret permanent i databasen!")
-                                st.rerun()
-            st.write("---")
+        with c_korr:
+            st.markdown('''<h4 style="color: #1A1A1A; margin-top: 15px;">Samtalehistorikk & E-poster</h4>''', unsafe_allow_html=True)
+            if not data_profil["korrespondanse"]:
+                st.markdown('''<p style="color: #888888; font-style: italic; font-size: 0.9em;">Ingen loggført korrespondanse.</p>''', unsafe_allow_html=True)
+            else:
+                for k in data_profil["korrespondanse"]:
+                    st.markdown(f'''
+                    <div style="background-color: #FFFFFF; padding: 14px 18px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin-bottom: 10px; border-left: 3px solid #738269;">
+                        <div style="font-size: 0.78em; color: #738269; font-weight: 700; text-transform: uppercase;">{k['dato']}</div>
+                        <div style="font-weight: 700; color: #1A1A1A; font-size: 0.98em; margin-top: 2px;">{k['emne']}</div>
+                        <div style="color: #444; font-size: 0.9em; margin-top: 4px; line-height: 1.5;">{k['innhold']}</div>
+                    </div>
+                    ''', unsafe_allow_html=True)
+            with st.expander("Loggfør nytt notat / samtale"):
+                with st.form("form_ny_korr", clear_on_submit=True):
+                    ny_emne = st.text_input("Emne:")
+                    ny_tekst = st.text_area("Innhold / referat:")
+                    if st.form_submit_button("Legg til"):
+                        if ny_emne and ny_tekst:
+                            data_profil["korrespondanse"].append({
+                                "dato": datetime.date.today().strftime("%d.%m.%Y"),
+                                "emne": f"{ny_emne} (Loggført av {st.session_state.innlogget_bruker})",
+                                "innhold": ny_tekst
+                            })
+                            zapisz_dane(db)
+                            st.success("Zapisano w bazie!")
+                            st.rerun()
+        st.write("---")
 
     col_v, col_h = st.columns(2)
-    for i, b in enumerate(db_beboere):
+    for i, b in enumerate(db["alle_beboere"]):
         target_col = col_v if i % 2 == 0 else col_h
         with target_col:
-            is_active = (st.session_state.valgt_beboer_epost == b['E-post'])
+            is_active = (st.session_state.valgt_beboer_index == i)
             css_class = "beboer-boks beboer-boks-valgt" if is_active else "beboer-boks"
             st.markdown(f'''
             <div class="{css_class}">
@@ -524,16 +534,13 @@ with fane2:
             </div>
             ''', unsafe_allow_html=True)
             btn_tekst = "Lukk profil" if is_active else "Åpne profil & historikk"
-            if st.button(btn_tekst, key=f"btn_beboer_db_{i}"):
-                if is_active:
-                    st.session_state.valgt_beboer_epost = None
-                else:
-                    st.session_state.valgt_beboer_epost = b['E-post']
+            if st.button(btn_tekst, key=f"btn_beboer_{i}"):
+                st.session_state.valgt_beboer_index = None if is_active else i
                 st.session_state.redigerer_beboer = False
                 st.rerun()
             st.write("<br>", unsafe_allow_html=True)
 
-# Fane 3
+# Fane 3 (Arkiv z zapisem w JSON)
 with fane3:
     st.markdown("### Sentralt Dokumentarkiv")
     st.write("Felles dokumenter og mapper for bygget.")
@@ -542,52 +549,70 @@ with fane3:
     col_knapp1, col_knapp2, _ = st.columns([1, 1.2, 2])
     with col_knapp1:
         if st.button("Lag ny mappe"):
-            st.session_state.vis_ny_mappe_form = not st.session_state.vis_ny_mappe_form
-            st.session_state.vis_last_opp_form = False
+            db["vis_ny_mappe_form"] = not db.get("vis_ny_mappe_form", False)
+            db["vis_last_opp_form"] = False
+            zapisz_dane(db)
     with col_knapp2:
         if st.button("Last opp dokument"):
-            st.session_state.vis_last_opp_form = not st.session_state.vis_last_opp_form
-            st.session_state.vis_ny_mappe_form = False
+            db["vis_last_opp_form"] = not db.get("vis_last_opp_form", False)
+            db["vis_ny_mappe_form"] = False
+            zapisz_dane(db)
 
-    if st.session_state.vis_ny_mappe_form:
+    if db.get("vis_ny_mappe_form", False):
         st.markdown('''<div class="nordic-card">''', unsafe_allow_html=True)
         st.markdown('''<div class="nordic-meta">Ny Mappe</div>''', unsafe_allow_html=True)
         ny_mappe_navn = st.text_input("Navn på mappen:")
         c1, c2 = st.columns([1, 4])
         with c1:
             if st.button("Opprett"):
-                if ny_mappe_navn and ny_mappe_navn not in st.session_state.bygg_mapper:
-                    st.session_state.bygg_mapper[ny_mappe_navn] = []
-                    st.session_state.vis_ny_mappe_form = False
+                if ny_mappe_navn and ny_mappe_navn not in db["bygg_mapper"]:
+                    db["bygg_mapper"][ny_mappe_navn] = []
+                    db["vis_ny_mappe_form"] = False
+                    zapisz_dane(db)
+                    st.success("Utworzono mapę!")
                     st.rerun()
         with c2:
             if st.button("Avbryt", key="avbryt_ny_mappe"):
-                st.session_state.vis_ny_mappe_form = False
+                db["vis_ny_mappe_form"] = False
+                zapisz_dane(db)
                 st.rerun()
         st.markdown('''</div>''', unsafe_allow_html=True)
 
-    if st.session_state.vis_last_opp_form:
+    if db.get("vis_last_opp_form", False):
         st.markdown('''<div class="nordic-card">''', unsafe_allow_html=True)
         st.markdown('''<div class="nordic-meta">Last opp dokument</div>''', unsafe_allow_html=True)
-        valgt_m = st.selectbox("Velg mappe:", list(st.session_state.bygg_mapper.keys()))
+        valgt_m = st.selectbox("Velg mappe:", list(db["bygg_mapper"].keys()))
         tittel_dok = st.text_input("Dokumenttittel:")
         opplastet_fil = st.file_uploader("Velg fil:")
         c1, c2 = st.columns([1, 4])
         with c1:
             if st.button("Lagre"):
                 if valgt_m and tittel_dok and opplastet_fil:
-                    st.session_state.bygg_mapper[valgt_m].append({"tittel": tittel_dok, "filnavn": opplastet_fil.name})
-                    st.session_state.vis_last_opp_form = False
+                    db["bygg_mapper"][valgt_m].append({"tittel": tittel_dok, "filnavn": opplastet_fil.name})
+                    db["vis_last_opp_form"] = False
+                    zapisz_dane(db)
+                    st.success("Zapisano plik w bazie!")
                     st.rerun()
         with c2:
             if st.button("Avbryt", key="avbryt_last_opp"):
-                st.session_state.vis_last_opp_form = False
+                db["vis_last_opp_form"] = False
+                zapisz_dane(db)
                 st.rerun()
         st.markdown('''</div>''', unsafe_allow_html=True)
 
     st.write("---")
-    for mappe_navn, filer in st.session_state.bygg_mapper.items():
-        st.markdown(f'''<div class="mappe-overskrift">{mappe_navn.upper()}</div>''', unsafe_allow_html=True)
+    for mappe_navn, filer in db["bygg_mapper"].items():
+        col_m1, col_m2 = st.columns([4, 1])
+        with col_m1:
+            st.markdown(f'''<div class="mappe-overskrift">{mappe_navn.upper()}</div>''', unsafe_allow_html=True)
+        with col_m2:
+            if mappe_navn not in ["Forsikring", "Tegninger & Bygg", "Økonomi & Budsjett", "Møtereferater"]:
+                if st.button("Slett mappe", key=f"slett_map_{mappe_navn}"):
+                    db["bygg_mapper"].pop(mappe_navn)
+                    zapisz_dane(db)
+                    st.success("Usunięto mapę.")
+                    st.rerun()
+
         if not filer:
             st.markdown('''<p style="color: #999999; font-style: italic; font-size: 0.88em; margin-bottom: 16px;">Ingen filer.</p>''', unsafe_allow_html=True)
         else:
@@ -603,7 +628,7 @@ with fane3:
                 ''', unsafe_allow_html=True)
             st.write("<br>", unsafe_allow_html=True)
 
-# Fane 4
+# Fane 4 (Kalender z zapisem w JSON)
 with fane4:
     st.markdown("### Styrets Kalender & Planlegging")
     k_fane1, k_fane2, k_fane3 = st.tabs(["📅 Månedskalender", "📋 Årshjul & Aktiviteter", "➕ Ny hendelse"])
@@ -633,7 +658,7 @@ with fane4:
                 table_html += "</tr><tr>"
                 gjeldende_dag_i_uke = 0
             dato_str = f"{valgt_aar}-{valgt_maned:02d}-{dag:02d}"
-            hendelser = [o for o in st.session_state.kalender_oppgaver if o["dato"] == dato_str]
+            hendelser = [o for o in db["kalender_oppgaver"] if o["dato"] == dato_str]
             td_class = "has-event" if hendelser else ""
             table_html += f"<td class='{td_class}'><strong>{dag}</strong>"
             for h in hendelser:
@@ -652,7 +677,7 @@ with fane4:
         st.markdown('''<h4 style="font-family: 'Playfair Display', serif;">Oversikt over alle planlagte styreaktiviteter</h4>''', unsafe_allow_html=True)
         if st.session_state.redigerer_kalender_id is not None:
             red_id = st.session_state.redigerer_kalender_id
-            treff = [item for item in st.session_state.kalender_oppgaver if item["id"] == red_id]
+            treff = [item for item in db["kalender_oppgaver"] if item["id"] == red_id]
             if treff:
                 gjeldende_hendelse = treff[0]
                 st.markdown('''<div class="nordic-card">''', unsafe_allow_html=True)
@@ -673,10 +698,12 @@ with fane4:
                         gjeldende_hendelse["oppgave"] = red_tittel
                         gjeldende_hendelse["detaljer"] = red_detaljer
                         st.session_state.redigerer_kalender_id = None
+                        zapisz_dane(db)
+                        st.success("Zaktualizowano wydarzenie!")
                         st.rerun()
                 st.markdown('''</div>''', unsafe_allow_html=True)
 
-        for oppg in st.session_state.kalender_oppgaver:
+        for oppg in db["kalender_oppgaver"]:
             tid_tekst = f"kl. {oppg.get('tid', '')} • " if oppg.get('tid') else ""
             c_oppg_tekst, c_oppg_btn = st.columns([4, 1.2])
             with c_oppg_tekst:
@@ -696,9 +723,11 @@ with fane4:
                         st.rerun()
                 with col_sub2:
                     if st.button("Slett", key=f"slett_cal_{oppg['id']}"):
-                        st.session_state.kalender_oppgaver = [o for o in st.session_state.kalender_oppgaver if o["id"] != oppg["id"]]
+                        db["kalender_oppgaver"] = [o for o in db["kalender_oppgaver"] if o["id"] != oppg["id"]]
                         if st.session_state.redigerer_kalender_id == oppg["id"]:
                             st.session_state.redigerer_kalender_id = None
+                        zapisz_dane(db)
+                        st.success("Usunięto wydarzenie!")
                         st.rerun()
             
     with k_fane3:
@@ -712,11 +741,13 @@ with fane4:
             ny_detaljer = st.text_input("Beskrivelse:")
             if st.form_submit_button("Lagre hendelse"):
                 if ny_tittel:
-                    ny_id = max([o["id"] for o in st.session_state.kalender_oppgaver], default=0) + 1
-                    st.session_state.kalender_oppgaver.append({
+                    ny_id = max([o["id"] for o in db["kalender_oppgaver"]], default=0) + 1
+                    db["kalender_oppgaver"].append({
                         "id": ny_id, "dato": str(ny_dato), "tid": ny_tid, "oppgave": ny_tittel, "detaljer": ny_detaljer, "type": "Møte/Aktivitet"
                     })
-                    st.session_state.kalender_oppgaver = sorted(st.session_state.kalender_oppgaver, key=lambda k: (k['dato'], k.get('tid', '')))
+                    db["kalender_oppgaver"] = sorted(db["kalender_oppgaver"], key=lambda k: (k['dato'], k.get('tid', '')))
+                    zapisz_dane(db)
+                    st.success("Dodano wydarzenie do bazy!")
                     st.rerun()
 
 # Fane 5
