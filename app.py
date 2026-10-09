@@ -4,7 +4,7 @@ import datetime
 import calendar
 
 # ==========================================
-# 1. DESIGN OG OPPSETT (Nordisk stil)
+# 1. DESIGN OG OPPSETT (Ren Nordisk stil)
 # ==========================================
 st.set_page_config(page_title="StyreSmart", page_icon="🏢", layout="wide")
 
@@ -109,7 +109,6 @@ st.markdown('''
         font-weight: 600 !important; 
     }
     
-    /* Kalendertabell */
     .kalender-table { width: 100%; border-collapse: separate; border-spacing: 6px; table-layout: fixed; }
     .kalender-table th { background-color: #EFECE5; color: #555555; font-family: 'Playfair Display', serif; padding: 10px; text-align: center; font-weight: 600; border-radius: 4px; font-size: 0.95em; }
     .kalender-table td { background-color: #FFFFFF; border: 1px solid #E5E2D9; height: 75px; vertical-align: top; padding: 8px; border-radius: 4px; font-size: 0.85em; }
@@ -117,7 +116,6 @@ st.markdown('''
     .kalender-table td.has-event { background-color: #F1F3ED; border-left: 4px solid #738269; }
     .event-badge { background-color: #738269; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.78em; font-weight: 600; display: inline-block; margin-top: 4px; }
     
-    /* Mappestil */
     .mappe-overskrift {
         font-family: 'Playfair Display', serif;
         font-size: 1.18em;
@@ -170,20 +168,51 @@ st.markdown('''
 ''', unsafe_allow_html=True)
 
 # ==========================================
-# 2. SYSTEMMINNE
+# 2. SYSTEMMINNE OG SIKKERHET (INNLOGGING)
 # ==========================================
 api_key = st.secrets.get("GEMINI_API_KEY", "")
 ai_klar = bool(api_key)
 
+if "er_logget_inn" not in st.session_state:
+    st.session_state.er_logget_inn = False
+
+# Vis innloggingsskjerm hvis man ikke er logget inn i portalen
+if not st.session_state.er_logget_inn:
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1, 1.2, 1])
+    with col2:
+        st.markdown("""
+        <div class="nordic-card" style="text-align: center; padding: 40px;">
+            <h2 style="font-family: 'Playfair Display', serif; margin-bottom: 10px;">StyreSmart</h2>
+            <p style="color: #666; font-size: 0.9em; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 30px;">Sameiet Kirkegata 6</p>
+        """, unsafe_allow_html=True)
+        
+        with st.form("login_form"):
+            bruker_input = st.text_input("Brukernavn:")
+            passord_input = st.text_input("Passord:", type="password")
+            submitted = st.form_submit_button("Logg inn i portalen")
+            
+            if submitted:
+                if bruker_input.strip().lower() == "kirkegata6" and passord_input == "Styret2026":
+                    st.session_state.er_logget_inn = True
+                    st.success("Innlogging vellykket!")
+                    st.rerun()
+                else:
+                    st.error("Feil brukernavn eller passord. Bruk 'Kirkegata6' og 'Styret2026'.")
+                    
+        st.markdown("</div>", unsafe_allow_html=True)
+    st.stop()
+
+# ==========================================
+# 3. RESTEN AV PROGRAMMET
+# ==========================================
 if "epost_utkast" not in st.session_state: st.session_state.epost_utkast = ""
 if "fellesmelding_utkast" not in st.session_state: st.session_state.fellesmelding_utkast = ""
-
+if "innlogget_bruker" not in st.session_state: st.session_state.innlogget_bruker = "Weronika Bhatti"
 if "vis_ny_mappe_form" not in st.session_state: st.session_state.vis_ny_mappe_form = False
 if "vis_last_opp_form" not in st.session_state: st.session_state.vis_last_opp_form = False
-
 if "valgt_beboer_index" not in st.session_state: st.session_state.valgt_beboer_index = None
 if "redigerer_beboer" not in st.session_state: st.session_state.redigerer_beboer = False
-
 if "redigerer_kalender_id" not in st.session_state: st.session_state.redigerer_kalender_id = None
 
 if "alle_beboere" not in st.session_state:
@@ -222,12 +251,8 @@ if "beboer_data" not in st.session_state:
 
 if "bygg_mapper" not in st.session_state:
     st.session_state.bygg_mapper = {
-        "Forsikring": [
-            {"tittel": "Forsikringsavtale If", "filnavn": "Forsikringsavtale_If_2026.pdf"}
-        ],
-        "Tegninger & Bygg": [
-            {"tittel": "Plantegninger 1. etg", "filnavn": "Plantegninger_Kirkegata_6.pdf"}
-        ],
+        "Forsikring": [{"tittel": "Forsikringsavtale If", "filnavn": "Forsikringsavtale_If_2026.pdf"}],
+        "Tegninger & Bygg": [{"tittel": "Plantegninger 1. etg", "filnavn": "Plantegninger_Kirkegata_6.pdf"}],
         "Økonomi & Budsjett": [
             {"tittel": "Nytt budsjett 2027", "filnavn": "Nytt_budsjett_2027_Sameiet_K6.xlsx"},
             {"tittel": "Budsjett 2027 Sameiet K6", "filnavn": "Budsjett_2027_Sameiet_K6.pdf"},
@@ -244,9 +269,7 @@ if "kalender_oppgaver" not in st.session_state:
         {"id": 3, "dato": "2026-11-01", "tid": "10:00", "oppgave": "Snømåkeavtale", "detaljer": "Inngå avtale om snømåking og strøing", "type": "Generell"}
     ]
 
-# ==========================================
-# 3. SIDEBAR MENY
-# ==========================================
+# Sidebar
 with st.sidebar:
     st.markdown("<h2 style='text-align: center; margin-top: 15px; color: #1A1A1A;'>StyreSmart</h2>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; font-size: 0.85em; letter-spacing: 2px; color: #666;'>KIRKEGATA 6</p>", unsafe_allow_html=True)
@@ -255,23 +278,46 @@ with st.sidebar:
         st.markdown("<div style='background-color: #E8EDE1; padding: 10px; border-radius: 4px; border-left: 4px solid #738269; text-align: center;'><span style='color: #4A5D3E; font-weight: 700; font-size: 0.85em;'>✓ AI-ASSISTENT TILKOBLET</span></div>", unsafe_allow_html=True)
     else:
         st.error("Mangler API-nøkkel")
+        
     st.write("---")
-    st.markdown('''<p style="font-family: 'Playfair Display', serif; font-size: 1.15em; border-bottom: 1px solid #DCDCDC; padding-bottom: 5px;">Aktive i styret</p>''', unsafe_allow_html=True)
-    st.write("Weronika Bhatti")
-    st.write("<span style='color: #888888;'>Ine Foss (Frakoblet)</span>", unsafe_allow_html=True)
-    st.write("<span style='color: #888888;'>Maria Frang (Frakoblet)</span>", unsafe_allow_html=True)
+    st.markdown('''<p style="font-family: 'Playfair Display', serif; font-size: 1.15em; border-bottom: 1px solid #DCDCDC; padding-bottom: 5px;">Innlogging / Profil</p>''', unsafe_allow_html=True)
+    
+    styremedlemmer = ["Weronika Bhatti", "Ine Foss", "Maria Frang"]
+    
+    # Bruker on_change for å sørge for at profilen oppdateres umiddelbart når man klikker
+    valgt_medlem = st.selectbox(
+        "Velg din profil:", 
+        styremedlemmer, 
+        index=styremedlemmer.index(st.session_state.innlogget_bruker),
+        key="profil_valg_box"
+    )
+    
+    if valgt_medlem != st.session_state.innlogget_bruker:
+        st.session_state.innlogget_bruker = valgt_medlem
+        st.rerun()
 
-# ==========================================
-# 4. HOVEDSKJERM OG FANER
-# ==========================================
+    st.markdown(f'''<p style="font-size: 0.9em; color: #555; margin-top: 10px;">Aktiv bruker: <strong>{st.session_state.innlogget_bruker}</strong></p>''', unsafe_allow_html=True)
+    
+    if st.button("Logg ut av portalen"):
+        st.session_state.er_logget_inn = False
+        st.rerun()
+
+    st.write("---")
+    st.markdown('''<p style="font-family: 'Playfair Display', serif; font-size: 1.15em; border-bottom: 1px solid #DCDCDC; padding-bottom: 5px;">Styrets sammensetning</p>''', unsafe_allow_html=True)
+    for m in styremedlemmer:
+        if m == st.session_state.innlogget_bruker:
+            st.markdown(f"**{m}** (Aktiv nå)")
+        else:
+            st.markdown(f"<span style='color: #888888;'>{m}</span>", unsafe_allow_html=True)
+
+# Hovedskjerm
 st.title("Styreportal")
 fane1, fane2, fane3, fane4, fane5 = st.tabs(["Innboks", "Beboere", "Arkiv", "Kalender", "Jus"])
 
-# ----------------- FANE 1: INNBOKS -----------------
+# Fane 1
 with fane1:
     st.write("<br>", unsafe_allow_html=True)
     kol1, kol2 = st.columns([1.2, 1])
-    
     with kol1:
         st.markdown('''
         <div class="viktig-boks">
@@ -285,7 +331,7 @@ with fane1:
             if ai_klar:
                 with st.spinner("Utformer svar..."):
                     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
-                    prompt = "Du er en bestemt juridisk AI-assistent for styret i Sameiet Kirkegt. 6. Beboer Akram Zalmai klager på lekkasje fra etasjen over. Skriv et formelt svar fra styret. Argumenter med Eierseksjonsloven for at innvendig vedlikehold er seksjonseierens ansvar. Avslutt KUN med 'Med vennlig hilsen, Styret i Sameiet Kirkegt. 6'."
+                    prompt = f"Du er en bestemt juridisk AI-assistent for styret i Sameiet Kirkegt. 6 (signeres av {st.session_state.innlogget_bruker} på vegne av styret). Beboer Akram Zalmai klager på lekkasje fra etasjen over. Skriv et formelt svar fra styret. Argumenter med Eierseksjonsloven for at innvendig vedlikehold er seksjonseierens ansvar. Avslutt KUN med 'Med vennlig hilsen, {st.session_state.innlogget_bruker} for Styret i Sameiet Kirkegt. 6'."
                     try:
                         response = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]})
                         if response.status_code == 200: 
@@ -297,7 +343,7 @@ with fane1:
             st.write("<br>", unsafe_allow_html=True)
             st.session_state.epost_utkast = st.text_area("Svarutkast:", value=st.session_state.epost_utkast, height=300)
             if st.button("Send e-post", key="send_epost_1"):
-                st.success("Sendt og arkivert.")
+                st.success(f"E-post sendt og godkjent av {st.session_state.innlogget_bruker}!")
                 st.balloons()
                 
     with kol2:
@@ -307,7 +353,7 @@ with fane1:
             if ai_klar and stikkord_felles:
                 with st.spinner("Skriver..."):
                     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
-                    prompt = f"Du er styret i Sameiet Kirkegt. 6. Skriv en kort, høflig felles e-post til beboere basert på: {stikkord_felles}. Avslutt med 'Hilsen Styret i Sameiet Kirkegt. 6'."
+                    prompt = f"Du er styret i Sameiet Kirkegt. 6. Skriv en kort, høflig felles e-post til beboere basert på: {stikkord_felles}. Avslutt med 'Hilsen {st.session_state.innlogget_bruker} for Styret i Sameiet Kirkegt. 6'."
                     try:
                         response = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]})
                         if response.status_code == 200: 
@@ -317,12 +363,12 @@ with fane1:
         if st.session_state.fellesmelding_utkast:
             st.session_state.fellesmelding_utkast = st.text_area("Utkast:", value=st.session_state.fellesmelding_utkast, height=200)
             if st.button("Publiser til beboere", key="publiser_1"): 
-                st.success("Fellesmelding publisert.")
+                st.success(f"Fellesmelding publisert av {st.session_state.innlogget_bruker}!")
 
-# ----------------- FANE 2: BEBOERE -----------------
+# Fane 2
 with fane2:
     st.markdown("### Personregister")
-    st.write("Klikk på **Åpne profil** på en beboer for å se samlet korrespondanse, dokumenter eller redigere opplysninger.")
+    st.write(f"Innlogget som: **{st.session_state.innlogget_bruker}**. Klikk på **Åpne profil** for å se samlet korrespondanse, dokumenter eller redigere.")
     st.write("<br>", unsafe_allow_html=True)
     
     if st.session_state.valgt_beboer_index is not None and st.session_state.valgt_beboer_index < len(st.session_state.alle_beboere):
@@ -365,13 +411,9 @@ with fane2:
                     if st.form_submit_button("Lagre endringer"):
                         if ny_epost != b_epost:
                             st.session_state.beboer_data[ny_epost] = st.session_state.beboer_data.pop(b_epost, {"dokumenter": [], "korrespondanse": []})
-                        st.session_state.alle_beboere[idx] = {
-                            "Navn": nytt_navn,
-                            "E-post": ny_epost,
-                            "Seksjon": ny_seksjon
-                        }
+                        st.session_state.alle_beboere[idx] = {"Navn": nytt_navn, "E-post": ny_epost, "Seksjon": ny_seksjon}
                         st.session_state.redigerer_beboer = False
-                        st.success("Opplysningene er oppdatert!")
+                        st.success(f"Opplysningene er oppdatert av {st.session_state.innlogget_bruker}!")
                         st.rerun()
             st.markdown('''</div>''', unsafe_allow_html=True)
 
@@ -380,7 +422,7 @@ with fane2:
         with c_dok:
             st.markdown('''<h4 style="color: #1A1A1A; margin-top: 15px;">Tilknyttede Dokumenter</h4>''', unsafe_allow_html=True)
             if not data_profil["dokumenter"]:
-                st.markdown('''<p style="color: #888888; font-style: italic; font-size: 0.9em;">Ingen dokumenter lagret på denne beboeren ennå.</p>''', unsafe_allow_html=True)
+                st.markdown('''<p style="color: #888888; font-style: italic; font-size: 0.9em;">Ingen dokumenter lagret.</p>''', unsafe_allow_html=True)
             else:
                 for d in data_profil["dokumenter"]:
                     st.markdown(f'''
@@ -392,21 +434,20 @@ with fane2:
                         <span class="dok-knapp">LAST NED</span>
                     </div>
                     ''', unsafe_allow_html=True)
-                    
-            with st.expander("Last opp dokument til denne personen"):
+            with st.expander("Last opp dokument"):
                 with st.form("form_last_opp_person", clear_on_submit=True):
-                    pers_dok_tittel = st.text_input("Tittel på fil:", placeholder="F.eks: Avtale om fasadeendring")
+                    pers_dok_tittel = st.text_input("Tittel på fil:")
                     pers_fil = st.file_uploader("Velg dokument:")
                     if st.form_submit_button("Lagre på beboer"):
                         if pers_dok_tittel and pers_fil:
                             data_profil["dokumenter"].append({"tittel": pers_dok_tittel, "filnavn": pers_fil.name})
-                            st.success(f"Lagret på {akt_beboer['Navn']}!")
+                            st.success("Lagret!")
                             st.rerun()
 
         with c_korr:
             st.markdown('''<h4 style="color: #1A1A1A; margin-top: 15px;">Samtalehistorikk & E-poster</h4>''', unsafe_allow_html=True)
             if not data_profil["korrespondanse"]:
-                st.markdown('''<p style="color: #888888; font-style: italic; font-size: 0.9em;">Ingen loggført korrespondanse ennå.</p>''', unsafe_allow_html=True)
+                st.markdown('''<p style="color: #888888; font-style: italic; font-size: 0.9em;">Ingen loggført korrespondanse.</p>''', unsafe_allow_html=True)
             else:
                 for k in data_profil["korrespondanse"]:
                     st.markdown(f'''
@@ -416,21 +457,19 @@ with fane2:
                         <div style="color: #444; font-size: 0.9em; margin-top: 4px; line-height: 1.5;">{k['innhold']}</div>
                     </div>
                     ''', unsafe_allow_html=True)
-                    
             with st.expander("Loggfør nytt notat / samtale"):
                 with st.form("form_ny_korr", clear_on_submit=True):
-                    ny_emne = st.text_input("Emne:", placeholder="F.eks: Telefonsamtale om støy")
+                    ny_emne = st.text_input("Emne:")
                     ny_tekst = st.text_area("Innhold / referat:")
-                    if st.form_submit_button("Legg til i historikk"):
+                    if st.form_submit_button("Legg til"):
                         if ny_emne and ny_tekst:
                             data_profil["korrespondanse"].append({
                                 "dato": datetime.date.today().strftime("%d.%m.%Y"),
-                                "emne": ny_emne,
+                                "emne": f"{ny_emne} (Loggført av {st.session_state.innlogget_bruker})",
                                 "innhold": ny_tekst
                             })
                             st.success("Loggført!")
                             st.rerun()
-
         st.write("---")
 
     col_v, col_h = st.columns(2)
@@ -439,26 +478,20 @@ with fane2:
         with target_col:
             is_active = (st.session_state.valgt_beboer_index == i)
             css_class = "beboer-boks beboer-boks-valgt" if is_active else "beboer-boks"
-            
             st.markdown(f'''
             <div class="{css_class}">
                 <div style="font-weight: 700; color: #1A1A1A; font-size: 1.05em;">{b['Navn']} <span style="font-weight: 400; color: #888888; font-size: 0.9em;">({b['Seksjon']})</span></div>
                 <div style="color: #555555; font-size: 0.9em; margin-top: 4px;">{b['E-post']}</div>
             </div>
             ''', unsafe_allow_html=True)
-            
             btn_tekst = "Lukk profil" if is_active else "Åpne profil & historikk"
             if st.button(btn_tekst, key=f"btn_beboer_{i}"):
-                if is_active:
-                    st.session_state.valgt_beboer_index = None
-                    st.session_state.redigerer_beboer = False
-                else:
-                    st.session_state.valgt_beboer_index = i
-                    st.session_state.redigerer_beboer = False
+                st.session_state.valgt_beboer_index = None if is_active else i
+                st.session_state.redigerer_beboer = False
                 st.rerun()
             st.write("<br>", unsafe_allow_html=True)
 
-# ----------------- FANE 3: ARKIV -----------------
+# Fane 3
 with fane3:
     st.markdown("### Sentralt Dokumentarkiv")
     st.write("Felles dokumenter og mapper for bygget.")
@@ -477,14 +510,13 @@ with fane3:
     if st.session_state.vis_ny_mappe_form:
         st.markdown('''<div class="nordic-card">''', unsafe_allow_html=True)
         st.markdown('''<div class="nordic-meta">Ny Mappe</div>''', unsafe_allow_html=True)
-        ny_mappe_navn = st.text_input("Navn på mappen:", placeholder="F.eks: Vedlikehold 2026")
+        ny_mappe_navn = st.text_input("Navn på mappen:")
         c1, c2 = st.columns([1, 4])
         with c1:
             if st.button("Opprett"):
                 if ny_mappe_navn and ny_mappe_navn not in st.session_state.bygg_mapper:
                     st.session_state.bygg_mapper[ny_mappe_navn] = []
                     st.session_state.vis_ny_mappe_form = False
-                    st.success(f"Mappen '{ny_mappe_navn}' er opprettet!")
                     st.rerun()
         with c2:
             if st.button("Avbryt", key="avbryt_ny_mappe"):
@@ -496,15 +528,14 @@ with fane3:
         st.markdown('''<div class="nordic-card">''', unsafe_allow_html=True)
         st.markdown('''<div class="nordic-meta">Last opp dokument</div>''', unsafe_allow_html=True)
         valgt_m = st.selectbox("Velg mappe:", list(st.session_state.bygg_mapper.keys()))
-        tittel_dok = st.text_input("Dokumenttittel:", placeholder="F.eks: Brannvernrapport 2026")
-        opplastet_fil = st.file_uploader("Velg fil (PDF, Word, Excel, bilde):")
+        tittel_dok = st.text_input("Dokumenttittel:")
+        opplastet_fil = st.file_uploader("Velg fil:")
         c1, c2 = st.columns([1, 4])
         with c1:
             if st.button("Lagre"):
                 if valgt_m and tittel_dok and opplastet_fil:
                     st.session_state.bygg_mapper[valgt_m].append({"tittel": tittel_dok, "filnavn": opplastet_fil.name})
                     st.session_state.vis_last_opp_form = False
-                    st.success(f"Lagret i {valgt_m}!")
                     st.rerun()
         with c2:
             if st.button("Avbryt", key="avbryt_last_opp"):
@@ -513,11 +544,10 @@ with fane3:
         st.markdown('''</div>''', unsafe_allow_html=True)
 
     st.write("---")
-    
     for mappe_navn, filer in st.session_state.bygg_mapper.items():
         st.markdown(f'''<div class="mappe-overskrift">{mappe_navn.upper()}</div>''', unsafe_allow_html=True)
         if not filer:
-            st.markdown('''<p style="color: #999999; font-style: italic; font-size: 0.88em; margin-bottom: 16px;">Ingen dokumenter i denne mappen ennå.</p>''', unsafe_allow_html=True)
+            st.markdown('''<p style="color: #999999; font-style: italic; font-size: 0.88em; margin-bottom: 16px;">Ingen filer.</p>''', unsafe_allow_html=True)
         else:
             for fil in filer:
                 st.markdown(f'''
@@ -531,10 +561,9 @@ with fane3:
                 ''', unsafe_allow_html=True)
             st.write("<br>", unsafe_allow_html=True)
 
-# ----------------- FANE 4: KALENDER -----------------
+# Fane 4
 with fane4:
     st.markdown("### Styrets Kalender & Planlegging")
-    
     k_fane1, k_fane2, k_fane3 = st.tabs(["📅 Månedskalender", "📋 Årshjul & Aktiviteter", "➕ Ny hendelse"])
     
     with k_fane1:
@@ -548,49 +577,37 @@ with fane4:
             valgt_maned = maned_navn.index(valgt_maned_navn) + 1
 
         st.markdown(f'''<h3 style="text-align: center; margin: 15px 0 20px 0; font-family: 'Playfair Display', serif;">{valgt_maned_navn} {valgt_aar}</h3>''', unsafe_allow_html=True)
-        
         forste_ukedag, dager_i_mnd = calendar.monthrange(valgt_aar, valgt_maned)
         ukedager = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"]
         
         table_html = "<table class='kalender-table'><thead><tr>"
-        for d in ukedager:
-            table_html += f"<th>{d}</th>"
+        for d in ukedager: table_html += f"<th>{d}</th>"
         table_html += "</tr></thead><tbody><tr>"
-        
-        for _ in range(forste_ukedag):
-            table_html += "<td class='empty'></td>"
+        for _ in range(forste_ukedag): table_html += "<td class='empty'></td>"
             
         gjeldende_dag_i_uke = forste_ukedag
         for dag in range(1, dager_i_mnd + 1):
             if gjeldende_dag_i_uke == 7:
                 table_html += "</tr><tr>"
                 gjeldende_dag_i_uke = 0
-                
             dato_str = f"{valgt_aar}-{valgt_maned:02d}-{dag:02d}"
             hendelser = [o for o in st.session_state.kalender_oppgaver if o["dato"] == dato_str]
-            
             td_class = "has-event" if hendelser else ""
             table_html += f"<td class='{td_class}'><strong>{dag}</strong>"
             for h in hendelser:
                 tid_visning = f"kl. {h.get('tid', '')} " if h.get('tid') else ""
                 table_html += f"<br><span class='event-badge'>{tid_visning}{h['oppgave']}</span>"
             table_html += "</td>"
-            
             gjeldende_dag_i_uke += 1
-            
         while gjeldende_dag_i_uke < 7:
             table_html += "<td class='empty'></td>"
             gjeldende_dag_i_uke += 1
-            
         table_html += "</tr></tbody></table>"
         st.markdown(table_html, unsafe_allow_html=True)
         
     with k_fane2:
         st.write("<br>", unsafe_allow_html=True)
         st.markdown('''<h4 style="font-family: 'Playfair Display', serif;">Oversikt over alle planlagte styreaktiviteter</h4>''', unsafe_allow_html=True)
-        st.write("Her kan du se, redigere eller slette oppføringer.")
-        st.write("<br>", unsafe_allow_html=True)
-
         if st.session_state.redigerer_kalender_id is not None:
             red_id = st.session_state.redigerer_kalender_id
             treff = [item for item in st.session_state.kalender_oppgaver if item["id"] == red_id]
@@ -604,25 +621,17 @@ with fane4:
                         def_date = datetime.datetime.strptime(gjeldende_hendelse["dato"], "%Y-%m-%d").date()
                         red_dato = st.date_input("Dato:", def_date)
                     with r_kol2:
-                        red_tid = st.text_input("Klokkeslett (f.eks. 18:00):", value=gjeldende_hendelse.get("tid", "18:00"))
+                        red_tid = st.text_input("Klokkeslett:", value=gjeldende_hendelse.get("tid", "18:00"))
                     with r_kol3:
                         red_tittel = st.text_input("Tittel:", value=gjeldende_hendelse["oppgave"])
-                    red_detaljer = st.text_area("Beskrivelse / agenda:", value=gjeldende_hendelse.get("detaljer", ""))
-
-                    c_save_k, c_cancel_k = st.columns([1, 4])
-                    with c_save_k:
-                        if st.form_submit_button("Lagre oppdatering"):
-                            gjeldende_hendelse["dato"] = str(red_dato)
-                            gjeldende_hendelse["tid"] = red_tid
-                            gjeldende_hendelse["oppgave"] = red_tittel
-                            gjeldende_hendelse["detaljer"] = red_detaljer
-                            st.session_state.redigerer_kalender_id = None
-                            st.success("Hendelsen er oppdatert!")
-                            st.rerun()
-                    with c_cancel_k:
-                        if st.form_submit_button("Avbryt"):
-                            st.session_state.redigerer_kalender_id = None
-                            st.rerun()
+                    red_detaljer = st.text_area("Beskrivelse:", value=gjeldende_hendelse.get("detaljer", ""))
+                    if st.form_submit_button("Lagre oppdatering"):
+                        gjeldende_hendelse["dato"] = str(red_dato)
+                        gjeldende_hendelse["tid"] = red_tid
+                        gjeldende_hendelse["oppgave"] = red_tittel
+                        gjeldende_hendelse["detaljer"] = red_detaljer
+                        st.session_state.redigerer_kalender_id = None
+                        st.rerun()
                 st.markdown('''</div>''', unsafe_allow_html=True)
 
         for oppg in st.session_state.kalender_oppgaver:
@@ -648,7 +657,6 @@ with fane4:
                         st.session_state.kalender_oppgaver = [o for o in st.session_state.kalender_oppgaver if o["id"] != oppg["id"]]
                         if st.session_state.redigerer_kalender_id == oppg["id"]:
                             st.session_state.redigerer_kalender_id = None
-                        st.success("Hendelsen ble slettet!")
                         st.rerun()
             
     with k_fane3:
@@ -657,26 +665,19 @@ with fane4:
         with st.form("form_ny_kalender"):
             k1, k2, k3 = st.columns([1, 1, 2])
             with k1: ny_dato = st.date_input("Dato:", datetime.date(2026, 10, 11))
-            with k2: ny_tid = st.text_input("Klokkeslett (f.eks. 18:00):", value="18:00")
-            with k3: ny_tittel = st.text_input("Tittel på hendelse:", placeholder="F.eks: Styremøte")
-            ny_detaljer = st.text_input("Beskrivelse / agenda:", placeholder="Gjennomgang av budsjett")
-            
+            with k2: ny_tid = st.text_input("Klokkeslett:", value="18:00")
+            with k3: ny_tittel = st.text_input("Tittel:")
+            ny_detaljer = st.text_input("Beskrivelse:")
             if st.form_submit_button("Lagre hendelse"):
                 if ny_tittel:
                     ny_id = max([o["id"] for o in st.session_state.kalender_oppgaver], default=0) + 1
                     st.session_state.kalender_oppgaver.append({
-                        "id": ny_id,
-                        "dato": str(ny_dato),
-                        "tid": ny_tid,
-                        "oppgave": ny_tittel,
-                        "detaljer": ny_detaljer,
-                        "type": "Møte/Aktivitet"
+                        "id": ny_id, "dato": str(ny_dato), "tid": ny_tid, "oppgave": ny_tittel, "detaljer": ny_detaljer, "type": "Møte/Aktivitet"
                     })
                     st.session_state.kalender_oppgaver = sorted(st.session_state.kalender_oppgaver, key=lambda k: (k['dato'], k.get('tid', '')))
-                    st.success("Hendelsen er lagt til i kalenderen!")
                     st.rerun()
 
-# ----------------- FANE 5: JUS -----------------
+# Fane 5
 with fane5:
     st.markdown("### Juridisk Rådgivning")
     st.write("Hva ønsker du vurdert opp mot lovverket?")
