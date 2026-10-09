@@ -95,17 +95,16 @@ def lagre_opplastet_fil(uploaded_file):
 
 def vis_fil_knapper(filnavn, unik_id):
     fil_sti = os.path.join(UPLOAD_DIR, filnavn)
+    mime = "application/octet-stream"
+    if filnavn.endswith('.pdf'): mime = "application/pdf"
+    elif filnavn.endswith(('.png', '.jpg', '.jpeg')): mime = "image/jpeg"
+    elif filnavn.endswith('.txt'): mime = "text/plain"
+
     if os.path.exists(fil_sti):
         with open(fil_sti, "rb") as f:
             bytes_data = f.read()
         b64 = base64.b64encode(bytes_data).decode()
         
-        # Sprawdzanie typu pliku dla poprawnego podglądu w przeglądarce
-        mime = "application/octet-stream"
-        if filnavn.endswith('.pdf'): mime = "application/pdf"
-        elif filnavn.endswith(('.png', '.jpg', '.jpeg')): mime = "image/jpeg"
-        elif filnavn.endswith('.txt'): mime = "text/plain"
-
         col_b1, col_b2 = st.columns(2)
         with col_b1:
             st.markdown(f'''
@@ -122,7 +121,7 @@ def vis_fil_knapper(filnavn, unik_id):
                 key=f"dl_{unik_id}"
             )
     else:
-        st.markdown(f'''<span style="color: #999; font-size: 0.8em; font-style: italic;">Fil ikke funnet på server ({filnavn})</span>''', unsafe_allow_html=True)
+        st.markdown(f'''<span style="color: #888; font-size: 0.8em; font-style: italic;">Fil ikke lastet opp ennå ({filnavn})</span>''', unsafe_allow_html=True)
 
 # ==========================================
 # 2. DESIGN OG OPPSETT (Nordisk stil)
@@ -247,17 +246,6 @@ st.markdown('''
         margin-bottom: 12px;
         border-bottom: 1px solid #E2DED5;
         padding-bottom: 6px;
-    }
-    .dok-kort {
-        background-color: #FFFFFF;
-        padding: 16px 22px;
-        border-radius: 5px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
-        margin-bottom: 10px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-left: 3px solid #738269;
     }
     .dok-knapp {
         color: #2B3A41;
@@ -511,6 +499,24 @@ with fane2:
             c_dok, c_korr = st.columns(2)
             with c_dok:
                 st.markdown('''<h4 style="color: #1A1A1A; margin-top: 15px;">Tilknyttede Dokumenter</h4>''', unsafe_allow_html=True)
+                
+                # Formularz do wgrywania bezpośrednio na stronie (zamiast expandera)
+                st.markdown('''<div style="background-color: #FFFFFF; padding: 16px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin-bottom: 15px;">''', unsafe_allow_html=True)
+                st.markdown('''<div class="nordic-meta" style="margin-bottom: 8px;">Last opp nytt dokument</div>''', unsafe_allow_html=True)
+                with st.form(f"form_last_opp_person_{valgt_epost}", clear_on_submit=True):
+                    pers_dok_tittel = st.text_input("Tittel på fil:")
+                    pers_fil = st.file_uploader("Velg dokument:")
+                    if st.form_submit_button("Lagre på beboer"):
+                        if pers_dok_tittel and pers_fil:
+                            lagret_navn = lagre_opplastet_fil(pers_fil)
+                            data_profil["dokumenter"].append({"tittel": pers_dok_tittel, "filnavn": lagret_navn})
+                            zapisz_dane(db)
+                            st.success("Lagret!")
+                            st.rerun()
+                        else:
+                            st.warning("Vennligst fyll ut tittel og velg fil.")
+                st.markdown('</div>', unsafe_allow_html=True)
+
                 if not data_profil["dokumenter"]:
                     st.markdown('''<p style="color: #888888; font-style: italic; font-size: 0.9em;">Ingen dokumenter lagret.</p>''', unsafe_allow_html=True)
                 else:
@@ -521,47 +527,51 @@ with fane2:
                             <div style="color: #777; font-size: 0.8em; margin-bottom: 8px;">{d['filnavn']}</div>
                         ''', unsafe_allow_html=True)
                         vis_fil_knapper(d['filnavn'], f"pers_dok_{idx_d}_{valgt_epost}")
-                        st.markdown('</div>', unsafe_allow_html=True)
                         
-                with st.expander("Last opp dokument"):
-                    with st.form("form_last_opp_person", clear_on_submit=True):
-                        pers_dok_tittel = st.text_input("Tittel på fil:")
-                        pers_fil = st.file_uploader("Velg dokument:")
-                        if st.form_submit_button("Lagre på beboer"):
-                            if pers_dok_tittel and pers_fil:
-                                lagret_navn = lagre_opplastet_fil(pers_fil)
-                                data_profil["dokumenter"].append({"tittel": pers_dok_tittel, "filnavn": lagret_navn})
-                                zapisz_dane(db)
-                                st.success("Lagret!")
-                                st.rerun()
+                        if st.button("🗑️ Slett dokument", key=f"slett_pers_dok_{idx_d}_{valgt_epost}"):
+                            data_profil["dokumenter"].pop(idx_d)
+                            zapisz_dane(db)
+                            st.success("Slettet!")
+                            st.rerun()
+                        st.markdown('</div>', unsafe_allow_html=True)
 
             with c_korr:
                 st.markdown('''<h4 style="color: #1A1A1A; margin-top: 15px;">Samtalehistorikk & E-poster</h4>''', unsafe_allow_html=True)
+                
+                # Formularz notatek bezpośrednio na stronie
+                st.markdown('''<div style="background-color: #FFFFFF; padding: 16px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin-bottom: 15px;">''', unsafe_allow_html=True)
+                st.markdown('''<div class="nordic-meta" style="margin-bottom: 8px;">Loggfør nytt notat / samtale</div>''', unsafe_allow_html=True)
+                with st.form(f"form_ny_korr_{valgt_epost}", clear_on_submit=True):
+                    ny_emne = st.text_input("Emne:")
+                    ny_tekst = st.text_area("Innhold / referat:")
+                    if st.form_submit_button("Legg til notat"):
+                        if ny_emne and ny_tekst:
+                            data_profil["korrespondanse"].append({
+                                "dato": datetime.date.today().strftime("%d.%m.%Y"),
+                                "emne": f"{ny_emne} (Loggført av {st.session_state.innlogget_bruker})",
+                                "innhold": ny_tekst
+                            })
+                            zapisz_dane(db)
+                            st.success("Loggført!")
+                            st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
+
                 if not data_profil["korrespondanse"]:
                     st.markdown('''<p style="color: #888888; font-style: italic; font-size: 0.9em;">Ingen loggført korrespondanse.</p>''', unsafe_allow_html=True)
                 else:
-                    for k in data_profil["korrespondanse"]:
+                    for idx_k, k in enumerate(data_profil["korrespondanse"]):
                         st.markdown(f'''
                         <div style="background-color: #FFFFFF; padding: 14px 18px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin-bottom: 10px; border-left: 3px solid #738269;">
                             <div style="font-size: 0.78em; color: #738269; font-weight: 700; text-transform: uppercase;">{k['dato']}</div>
                             <div style="font-weight: 700; color: #1A1A1A; font-size: 0.98em; margin-top: 2px;">{k['emne']}</div>
                             <div style="color: #444; font-size: 0.9em; margin-top: 4px; line-height: 1.5;">{k['innhold']}</div>
-                        </div>
                         ''', unsafe_allow_html=True)
-                with st.expander("Loggfør nytt notat / samtale"):
-                    with st.form("form_ny_korr", clear_on_submit=True):
-                        ny_emne = st.text_input("Emne:")
-                        ny_tekst = st.text_area("Innhold / referat:")
-                        if st.form_submit_button("Legg til"):
-                            if ny_emne and ny_tekst:
-                                data_profil["korrespondanse"].append({
-                                    "dato": datetime.date.today().strftime("%d.%m.%Y"),
-                                    "emne": f"{ny_emne} (Loggført av {st.session_state.innlogget_bruker})",
-                                    "innhold": ny_tekst
-                                })
-                                zapisz_dane(db)
-                                st.success("Loggført!")
-                                st.rerun()
+                        if st.button("Slett notat", key=f"slett_korr_{idx_k}_{valgt_epost}"):
+                            data_profil["korrespondanse"].pop(idx_k)
+                            zapisz_dane(db)
+                            st.success("Notat slettet!")
+                            st.rerun()
+                        st.markdown('</div>', unsafe_allow_html=True)
             st.write("---")
 
     col_v, col_h = st.columns(2)
@@ -604,42 +614,32 @@ with fane3:
     if db.get("vis_ny_mappe_form", False):
         st.markdown('''<div class="nordic-card">''', unsafe_allow_html=True)
         st.markdown('''<div class="nordic-meta">Ny Mappe</div>''', unsafe_allow_html=True)
-        ny_mappe_navn = st.text_input("Navn på mappen:")
-        c1, c2 = st.columns([1, 4])
-        with c1:
-            if st.button("Opprett"):
+        with st.form("form_ny_mappe"):
+            ny_mappe_navn = st.text_input("Navn på mappen:")
+            if st.form_submit_button("Opprett mappe"):
                 if ny_mappe_navn and ny_mappe_navn not in db["bygg_mapper"]:
                     db["bygg_mapper"][ny_mappe_navn] = []
                     db["vis_ny_mappe_form"] = False
                     zapisz_dane(db)
                     st.rerun()
-        with c2:
-            if st.button("Avbryt", key="avbryt_ny_mappe"):
-                db["vis_ny_mappe_form"] = False
-                zapisz_dane(db)
-                st.rerun()
         st.markdown('''</div>''', unsafe_allow_html=True)
 
     if db.get("vis_last_opp_form", False):
         st.markdown('''<div class="nordic-card">''', unsafe_allow_html=True)
-        st.markdown('''<div class="nordic-meta">Last opp dokument</div>''', unsafe_allow_html=True)
-        valgt_m = st.selectbox("Velg mappe:", list(db["bygg_mapper"].keys()))
-        tittel_dok = st.text_input("Dokumenttittel:")
-        opplastet_fil = st.file_uploader("Velg fil:")
-        c1, c2 = st.columns([1, 4])
-        with c1:
-            if st.button("Lagre"):
+        st.markdown('''<div class="nordic-meta">Last opp dokument til arkiv</div>''', unsafe_allow_html=True)
+        with st.form("form_last_opp_arkiv"):
+            valgt_m = st.selectbox("Velg mappe:", list(db["bygg_mapper"].keys()))
+            tittel_dok = st.text_input("Dokumenttittel:")
+            opplastet_fil = st.file_uploader("Velg fil:")
+            if st.form_submit_button("Lagre dokument"):
                 if valgt_m and tittel_dok and opplastet_fil:
                     lagret_navn = lagre_opplastet_fil(opplastet_fil)
                     db["bygg_mapper"][valgt_m].append({"tittel": tittel_dok, "filnavn": lagret_navn})
                     db["vis_last_opp_form"] = False
                     zapisz_dane(db)
                     st.rerun()
-        with c2:
-            if st.button("Avbryt", key="avbryt_last_opp"):
-                db["vis_last_opp_form"] = False
-                zapisz_dane(db)
-                st.rerun()
+                else:
+                    st.warning("Fyll ut tittel og velg fil.")
         st.markdown('''</div>''', unsafe_allow_html=True)
 
     st.write("---")
@@ -664,6 +664,12 @@ with fane3:
                     <div style="font-size: 0.8em; color: #777777; margin-bottom: 10px;">{fil['filnavn']}</div>
                 ''', unsafe_allow_html=True)
                 vis_fil_knapper(fil['filnavn'], f"arkiv_{mappe_navn}_{idx_f}")
+                
+                if st.button("🗑️ Slett dokument", key=f"slett_arkiv_dok_{mappe_navn}_{idx_f}"):
+                    filer.pop(idx_f)
+                    zapisz_dane(db)
+                    st.success("Dokument slettet!")
+                    st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
             st.write("<br>", unsafe_allow_html=True)
 
