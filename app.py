@@ -93,35 +93,56 @@ def lagre_opplastet_fil(uploaded_file):
         return uploaded_file.name
     return None
 
-def vis_fil_knapper(filnavn, unik_id):
+def vis_fil_seksjon(filnavn, tittel, unik_id):
     fil_sti = os.path.join(UPLOAD_DIR, filnavn)
     mime = "application/octet-stream"
     if filnavn.endswith('.pdf'): mime = "application/pdf"
     elif filnavn.endswith(('.png', '.jpg', '.jpeg')): mime = "image/jpeg"
     elif filnavn.endswith('.txt'): mime = "text/plain"
 
-    if os.path.exists(fil_sti):
-        with open(fil_sti, "rb") as f:
-            bytes_data = f.read()
-        b64 = base64.b64encode(bytes_data).decode()
-        
-        col_b1, col_b2 = st.columns(2)
-        with col_b1:
-            st.markdown(f'''
-                <a href="data:{mime};base64,{b64}" target="_blank" style="text-decoration:none;">
-                    <div class="dok-knapp" style="text-align:center;">🔍 Se i nettleser</div>
-                </a>
-            ''', unsafe_allow_html=True)
-        with col_b2:
+    col_s1, col_s2 = st.columns([1, 1])
+    
+    with col_s1:
+        if st.button("Se i nettleser", key=f"se_{unik_id}"):
+            st.session_state[f"vis_popup_{unik_id}"] = True
+            
+    with col_s2:
+        if os.path.exists(fil_sti):
+            with open(fil_sti, "rb") as f:
+                bytes_data = f.read()
             st.download_button(
-                label="📥 Last ned",
+                label="Last ned",
                 data=bytes_data,
                 file_name=filnavn,
                 mime=mime,
                 key=f"dl_{unik_id}"
             )
-    else:
-        st.markdown(f'''<span style="color: #888; font-size: 0.8em; font-style: italic;">Fil ikke lastet opp ennå ({filnavn})</span>''', unsafe_allow_html=True)
+        else:
+            st.caption("Fil ikke på server")
+
+    # Wyskakujące okienko (popup / modal) bezpośrednio na stronie
+    if st.session_state.get(f"vis_popup_{unik_id}", False):
+        @st.dialog(f"Viser dokument: {tittel}")
+        def vis_modal():
+            st.write(Filnavn: {filnavn})
+            if os.path.exists(fil_sti):
+                if filnavn.endswith(('.png', '.jpg', '.jpeg')):
+                    st.image(fil_sti)
+                elif filnavn.endswith('.pdf'):
+                    with open(fil_sti, "rb") as f:
+                        base64_pdf = base64.b64encode(f.read()).decode('utf-8')
+                    pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="600px" type="application/pdf"></iframe>'
+                    st.markdown(pdf_display, unsafe_allow_html=True)
+                else:
+                    with open(fil_sti, "r", encoding="utf-8", errors="ignore") as f:
+                        st.text(f.read())
+            else:
+                st.warning("Beklager, denne eksempelfilen er ikke lastet opp fysisk på serveren enda.")
+            
+            if st.button("Lukk", key=f"lukk_modal_{unik_id}"):
+                st.session_state[f"vis_popup_{unik_id}"] = False
+                st.rerun()
+        vis_modal()
 
 # ==========================================
 # 2. DESIGN OG OPPSETT (Nordisk stil)
@@ -246,19 +267,6 @@ st.markdown('''
         margin-bottom: 12px;
         border-bottom: 1px solid #E2DED5;
         padding-bottom: 6px;
-    }
-    .dok-knapp {
-        color: #2B3A41;
-        font-size: 0.78em;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 1.2px;
-        border: 1px solid #D1C7B7;
-        padding: 7px 14px;
-        border-radius: 4px;
-        background-color: #FAF9F6;
-        cursor: pointer;
-        display: inline-block;
     }
     .beboer-boks {
         background-color: #FFFFFF;
@@ -500,7 +508,6 @@ with fane2:
             with c_dok:
                 st.markdown('''<h4 style="color: #1A1A1A; margin-top: 15px;">Tilknyttede Dokumenter</h4>''', unsafe_allow_html=True)
                 
-                # Formularz do wgrywania bezpośrednio na stronie (zamiast expandera)
                 st.markdown('''<div style="background-color: #FFFFFF; padding: 16px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin-bottom: 15px;">''', unsafe_allow_html=True)
                 st.markdown('''<div class="nordic-meta" style="margin-bottom: 8px;">Last opp nytt dokument</div>''', unsafe_allow_html=True)
                 with st.form(f"form_last_opp_person_{valgt_epost}", clear_on_submit=True):
@@ -526,9 +533,9 @@ with fane2:
                             <div style="font-weight: 600; color: #1A1A1A; font-size: 1.02em;">{d['tittel']}</div>
                             <div style="color: #777; font-size: 0.8em; margin-bottom: 8px;">{d['filnavn']}</div>
                         ''', unsafe_allow_html=True)
-                        vis_fil_knapper(d['filnavn'], f"pers_dok_{idx_d}_{valgt_epost}")
+                        vis_fil_seksjon(d['filnavn'], d['tittel'], f"pers_dok_{idx_d}_{valgt_epost}")
                         
-                        if st.button("🗑️ Slett dokument", key=f"slett_pers_dok_{idx_d}_{valgt_epost}"):
+                        if st.button("Slett dokument", key=f"slett_pers_dok_{idx_d}_{valgt_epost}"):
                             data_profil["dokumenter"].pop(idx_d)
                             zapisz_dane(db)
                             st.success("Slettet!")
@@ -538,7 +545,6 @@ with fane2:
             with c_korr:
                 st.markdown('''<h4 style="color: #1A1A1A; margin-top: 15px;">Samtalehistorikk & E-poster</h4>''', unsafe_allow_html=True)
                 
-                # Formularz notatek bezpośrednio na stronie
                 st.markdown('''<div style="background-color: #FFFFFF; padding: 16px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin-bottom: 15px;">''', unsafe_allow_html=True)
                 st.markdown('''<div class="nordic-meta" style="margin-bottom: 8px;">Loggfør nytt notat / samtale</div>''', unsafe_allow_html=True)
                 with st.form(f"form_ny_korr_{valgt_epost}", clear_on_submit=True):
@@ -663,9 +669,9 @@ with fane3:
                     <div style="font-family: 'Playfair Display', serif; font-size: 1.05em; color: #1A1A1A; font-weight: 600;">{fil['tittel']}</div>
                     <div style="font-size: 0.8em; color: #777777; margin-bottom: 10px;">{fil['filnavn']}</div>
                 ''', unsafe_allow_html=True)
-                vis_fil_knapper(fil['filnavn'], f"arkiv_{mappe_navn}_{idx_f}")
+                vis_fil_seksjon(fil['filnavn'], fil['tittel'], f"arkiv_{mappe_navn}_{idx_f}")
                 
-                if st.button("🗑️ Slett dokument", key=f"slett_arkiv_dok_{mappe_navn}_{idx_f}"):
+                if st.button("Slett dokument", key=f"slett_arkiv_dok_{mappe_navn}_{idx_f}"):
                     filer.pop(idx_f)
                     zapisz_dane(db)
                     st.success("Dokument slettet!")
