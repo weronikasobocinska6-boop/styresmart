@@ -120,11 +120,10 @@ def vis_fil_seksjon(filnavn, tittel, unik_id):
         else:
             st.caption("Fil ikke på server")
 
-    # Wyskakujące okienko (popup / modal) bezpośrednio na stronie
     if st.session_state.get(f"vis_popup_{unik_id}", False):
         @st.dialog(f"Viser dokument: {tittel}")
         def vis_modal():
-            st.write(Filnavn: {filnavn})
+            st.write(f"Filnavn: {filnavn}")
             if os.path.exists(fil_sti):
                 if filnavn.endswith(('.png', '.jpg', '.jpeg')):
                     st.image(fil_sti)
@@ -139,7 +138,7 @@ def vis_fil_seksjon(filnavn, tittel, unik_id):
             else:
                 st.warning("Beklager, denne eksempelfilen er ikke lastet opp fysisk på serveren enda.")
             
-            if st.button("Lukk", key=f"lukk_modal_{unik_id}"):
+            if st.button("Lukk vindu", key=f"lukk_modal_{unik_id}"):
                 st.session_state[f"vis_popup_{unik_id}"] = False
                 st.rerun()
         vis_modal()
@@ -173,7 +172,7 @@ st.markdown('''
     #MainMenu {visibility: hidden;} 
     footer {visibility: hidden;}
 
-    .stButton > button {
+    .stButton > button, .stDownloadButton > button {
         background-color: #2B3A41 !important; 
         color: #FFFFFF !important; 
         border-radius: 4px !important; 
@@ -186,13 +185,15 @@ st.markdown('''
         letter-spacing: 1.2px !important; 
         box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important; 
         transition: all 0.2s ease !important;
+        display: inline-flex !important;
+        justify-content: center !important;
     }
-    .stButton > button:hover { 
+    .stButton > button:hover, .stDownloadButton > button:hover { 
         background-color: #1A2429 !important; 
         transform: translateY(-1px) !important; 
         box-shadow: 0 6px 16px rgba(0,0,0,0.12) !important; 
     }
-    .stButton button p { color: #FFFFFF !important; }
+    .stButton button p, .stDownloadButton button p { color: #FFFFFF !important; margin: 0 !important; }
 
     .nordic-card { 
         background-color: #FFFFFF; 
@@ -422,7 +423,7 @@ with fane2:
     st.write(f"Innlogget som: **{st.session_state.innlogget_bruker}**. Klikk på **Åpne profil** på en beboer for å se samlet korrespondanse, dokumenter eller redigere.")
     st.write("<br>", unsafe_allow_html=True)
     
-    if st.button("➕ Legg til ny beboer"):
+    if st.button("Legg til ny beboer"):
         st.session_state.vis_ny_beboer_form = not st.session_state.vis_ny_beboer_form
         
     if st.session_state.vis_ny_beboer_form:
