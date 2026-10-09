@@ -62,7 +62,6 @@ def wczytaj_dane():
         try:
             with open(DB_PATH, "r", encoding="utf-8") as f:
                 dane = json.load(f)
-                # Upewnij się, że wszystkie klucze istnieją (bezpiecznik przed błędem)
                 for klucz in DOMYSLNE_DANE:
                     if klucz not in dane:
                         dane[klucz] = DOMYSLNE_DANE[klucz]
@@ -343,7 +342,7 @@ with fane1:
             if ai_klar:
                 with st.spinner("Utformer svar..."):
                     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
-                    prompt = f"Du er en bestemt juridisk AI-assistent for styret i Sameiet Kirkegt. 6 (signeres av {st.session_state.innlogget_bruker} på vegne av styret). Beboer Akram Zalmai klager på lekkasje fra etasjen over. Skriv et formelt svar fra styret. Argumenter med Eierseksjonsloven for at innvendig vedlikehold er seksjonseierens ansvar. Avslutt KUN med 'Med vennlig hilsen, {st.session_state.innlogget_bruker} for Styret in Sameiet Kirkegt. 6'."
+                    prompt = f"Du er en bestemt juridisk AI-assistent for styret i Sameiet Kirkegt. 6 (signeres av {st.session_state.innlogget_bruker} på vegne av styret). Beboer Akram Zalmai klager på lekkasje fra etasjen over. Skriv et formelt svar fra styret. Argumenter med Eierseksjonsloven for at innvendig vedlikehold er seksjonseierens ansvar. Avslutt KUN med 'Med vennlig hilsen, {st.session_state.innlogget_bruker} for Styret i Sameiet Kirkegt. 6'."
                     try:
                         response = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]})
                         if response.status_code == 200: 
@@ -725,7 +724,7 @@ with fane4:
                         st.rerun()
             
     with k_fane3:
-        st.write("<br>", unsafe_allow_html=Thread := None)
+        st.write("<br>", unsafe_allow_html=True)
         st.markdown('''<h4 style="font-family: 'Playfair Display', serif;">Legg til ny aktivitet</h4>''', unsafe_allow_html=True)
         with st.form("form_ny_kalender"):
             k1, k2, k3 = st.columns([1, 1, 2])
