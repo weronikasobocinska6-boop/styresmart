@@ -4,7 +4,7 @@ import datetime
 import calendar
 
 # ==========================================
-# 1. DESIGN OG OPPSETT (Ren Nordisk stil)
+# 1. DESIGN OG OPPSETT (Mobilvennlig Nordisk Stil)
 # ==========================================
 st.set_page_config(page_title="StyreSmart", page_icon="🏢", layout="wide")
 
@@ -26,18 +26,19 @@ st.markdown('''
         font-weight: 600 !important; 
         letter-spacing: 0.5px; 
     }
-    h1 { text-align: center; margin-bottom: 30px !important; font-size: 3.2rem !important; color: #222222 !important; }
+    h1 { text-align: center; margin-bottom: 20px !important; font-size: 2.5rem !important; color: #222222 !important; }
 
     header {visibility: hidden;} 
     #MainMenu {visibility: hidden;} 
     footer {visibility: hidden;}
 
+    /* Responsive knapper som tilpasser seg mobil */
     .stButton > button {
         background-color: #2B3A41 !important; 
         color: #FFFFFF !important; 
         border-radius: 4px !important; 
         border: none !important;
-        padding: 9px 20px !important; 
+        padding: 10px 20px !important; 
         font-family: 'Lato', sans-serif !important; 
         font-weight: 600 !important; 
         font-size: 0.86em !important;
@@ -45,17 +46,17 @@ st.markdown('''
         letter-spacing: 1.2px !important; 
         box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important; 
         transition: all 0.2s ease !important;
+        width: 100%;
     }
     .stButton > button:hover { 
         background-color: #1A2429 !important; 
         transform: translateY(-1px) !important; 
-        box-shadow: 0 6px 16px rgba(0,0,0,0.12) !important; 
     }
     .stButton button p { color: #FFFFFF !important; }
 
     .nordic-card { 
         background-color: #FFFFFF; 
-        padding: 24px 28px; 
+        padding: 20px; 
         border-radius: 6px; 
         box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04); 
         margin-bottom: 16px; 
@@ -63,7 +64,7 @@ st.markdown('''
     }
     .viktig-boks { 
         background-color: #F1F3ED; 
-        padding: 22px 25px; 
+        padding: 20px; 
         border-radius: 6px; 
         border-left: 5px solid #738269; 
         margin-bottom: 20px; 
@@ -91,16 +92,14 @@ st.markdown('''
         color: #333333; 
     }
 
-    .stTabs [data-baseweb="tab-list"] { gap: 24px; border-bottom: 1px solid #DCDCDC; }
+    .stTabs [data-baseweb="tab-list"] { gap: 15px; border-bottom: 1px solid #DCDCDC; overflow-x: auto; }
     .stTabs [data-baseweb="tab"] { 
-        height: 50px; 
+        height: 45px; 
         white-space: pre-wrap; 
         background-color: transparent !important; 
         border-radius: 0px; 
-        padding-top: 10px; 
-        padding-bottom: 10px; 
         font-family: 'Playfair Display', serif !important; 
-        font-size: 1.15em !important; 
+        font-size: 1.05em !important; 
         color: #999999 !important; 
     }
     .stTabs [aria-selected="true"] { 
@@ -109,27 +108,29 @@ st.markdown('''
         font-weight: 600 !important; 
     }
     
-    .kalender-table { width: 100%; border-collapse: separate; border-spacing: 6px; table-layout: fixed; }
-    .kalender-table th { background-color: #EFECE5; color: #555555; font-family: 'Playfair Display', serif; padding: 10px; text-align: center; font-weight: 600; border-radius: 4px; font-size: 0.95em; }
-    .kalender-table td { background-color: #FFFFFF; border: 1px solid #E5E2D9; height: 75px; vertical-align: top; padding: 8px; border-radius: 4px; font-size: 0.85em; }
+    /* Mobilvennlig kalendertabell (med horisontal rulling på små skjermer) */
+    .kalender-wrapper { width: 100%; overflow-x: auto; }
+    .kalender-table { width: 100%; min-width: 500px; border-collapse: separate; border-spacing: 4px; table-layout: fixed; }
+    .kalender-table th { background-color: #EFECE5; color: #555555; font-family: 'Playfair Display', serif; padding: 8px; text-align: center; font-weight: 600; border-radius: 4px; font-size: 0.85em; }
+    .kalender-table td { background-color: #FFFFFF; border: 1px solid #E5E2D9; height: 65px; vertical-align: top; padding: 6px; border-radius: 4px; font-size: 0.75em; }
     .kalender-table td.empty { background-color: transparent; border: none; }
-    .kalender-table td.has-event { background-color: #F1F3ED; border-left: 4px solid #738269; }
-    .event-badge { background-color: #738269; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.78em; font-weight: 600; display: inline-block; margin-top: 4px; }
+    .kalender-table td.has-event { background-color: #F1F3ED; border-left: 3px solid #738269; }
+    .event-badge { background-color: #738269; color: white; padding: 2px 4px; border-radius: 3px; font-size: 0.7em; font-weight: 600; display: inline-block; margin-top: 2px; }
     
     .mappe-overskrift {
         font-family: 'Playfair Display', serif;
-        font-size: 1.18em;
+        font-size: 1.1em;
         font-weight: 600;
         color: #1A1A1A;
         letter-spacing: 0.5px;
-        margin-top: 24px;
-        margin-bottom: 12px;
+        margin-top: 20px;
+        margin-bottom: 10px;
         border-bottom: 1px solid #E2DED5;
-        padding-bottom: 6px;
+        padding-bottom: 4px;
     }
     .dok-kort {
         background-color: #FFFFFF;
-        padding: 16px 22px;
+        padding: 14px 18px;
         border-radius: 5px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
         margin-bottom: 10px;
@@ -140,29 +141,31 @@ st.markdown('''
     }
     .dok-knapp {
         color: #2B3A41;
-        font-size: 0.78em;
+        font-size: 0.75em;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 1.2px;
         border: 1px solid #D1C7B7;
-        padding: 6px 14px;
+        padding: 5px 10px;
         border-radius: 4px;
         background-color: #FAF9F6;
-        cursor: pointer;
     }
     .beboer-boks {
         background-color: #FFFFFF;
-        padding: 18px 22px;
+        padding: 15px 18px;
         border-radius: 6px;
         box-shadow: 0 2px 10px rgba(0,0,0,0.03);
-        margin-bottom: 12px;
+        margin-bottom: 10px;
         border-left: 3px solid #D1C7B7;
-        transition: all 0.2s ease;
     }
     .beboer-boks-valgt {
         background-color: #F9FAF8;
         border-left: 4px solid #738269;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+    }
+
+    /* Media queries for responsivitet på mobil */
+    @media (max-width: 768px) {
+        h1 { font-size: 2.2rem !important; }
+        .nordic-card, .viktig-boks { padding: 15px; }
     }
 </style>
 ''', unsafe_allow_html=True)
@@ -176,15 +179,14 @@ ai_klar = bool(api_key)
 if "er_logget_inn" not in st.session_state:
     st.session_state.er_logget_inn = False
 
-# Vis innloggingsskjerm hvis man ikke er logget inn i portalen
 if not st.session_state.er_logget_inn:
     st.markdown("<br><br>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1, 1.2, 1])
+    col1, col2, col3 = st.columns([0.1, 1, 0.1])
     with col2:
         st.markdown("""
-        <div class="nordic-card" style="text-align: center; padding: 40px;">
-            <h2 style="font-family: 'Playfair Display', serif; margin-bottom: 10px;">StyreSmart</h2>
-            <p style="color: #666; font-size: 0.9em; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 30px;">Sameiet Kirkegata 6</p>
+        <div class="nordic-card" style="text-align: center; padding: 30px 20px;">
+            <h2 style="font-family: 'Playfair Display', serif; margin-bottom: 5px;">StyreSmart</h2>
+            <p style="color: #666; font-size: 0.85em; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 25px;">Sameiet Kirkegata 6</p>
         """, unsafe_allow_html=True)
         
         with st.form("login_form"):
@@ -283,15 +285,7 @@ with st.sidebar:
     st.markdown('''<p style="font-family: 'Playfair Display', serif; font-size: 1.15em; border-bottom: 1px solid #DCDCDC; padding-bottom: 5px;">Innlogging / Profil</p>''', unsafe_allow_html=True)
     
     styremedlemmer = ["Weronika Bhatti", "Ine Foss", "Maria Frang"]
-    
-    # Bruker on_change for å sørge for at profilen oppdateres umiddelbart når man klikker
-    valgt_medlem = st.selectbox(
-        "Velg din profil:", 
-        styremedlemmer, 
-        index=styremedlemmer.index(st.session_state.innlogget_bruker),
-        key="profil_valg_box"
-    )
-    
+    valgt_medlem = st.selectbox("Velg din profil:", styremedlemmer, index=styremedlemmer.index(st.session_state.innlogget_bruker), key="profil_valg_box")
     if valgt_medlem != st.session_state.innlogget_bruker:
         st.session_state.innlogget_bruker = valgt_medlem
         st.rerun()
@@ -472,24 +466,21 @@ with fane2:
                             st.rerun()
         st.write("---")
 
-    col_v, col_h = st.columns(2)
     for i, b in enumerate(st.session_state.alle_beboere):
-        target_col = col_v if i % 2 == 0 else col_h
-        with target_col:
-            is_active = (st.session_state.valgt_beboer_index == i)
-            css_class = "beboer-boks beboer-boks-valgt" if is_active else "beboer-boks"
-            st.markdown(f'''
-            <div class="{css_class}">
-                <div style="font-weight: 700; color: #1A1A1A; font-size: 1.05em;">{b['Navn']} <span style="font-weight: 400; color: #888888; font-size: 0.9em;">({b['Seksjon']})</span></div>
-                <div style="color: #555555; font-size: 0.9em; margin-top: 4px;">{b['E-post']}</div>
-            </div>
-            ''', unsafe_allow_html=True)
-            btn_tekst = "Lukk profil" if is_active else "Åpne profil & historikk"
-            if st.button(btn_tekst, key=f"btn_beboer_{i}"):
-                st.session_state.valgt_beboer_index = None if is_active else i
-                st.session_state.redigerer_beboer = False
-                st.rerun()
-            st.write("<br>", unsafe_allow_html=True)
+        is_active = (st.session_state.valgt_beboer_index == i)
+        css_class = "beboer-boks beboer-boks-valgt" if is_active else "beboer-boks"
+        st.markdown(f'''
+        <div class="{css_class}">
+            <div style="font-weight: 700; color: #1A1A1A; font-size: 1.05em;">{b['Navn']} <span style="font-weight: 400; color: #888888; font-size: 0.9em;">({b['Seksjon']})</span></div>
+            <div style="color: #555555; font-size: 0.9em; margin-top: 4px;">{b['E-post']}</div>
+        </div>
+        ''', unsafe_allow_html=True)
+        btn_tekst = "Lukk profil" if is_active else "Åpne profil & historikk"
+        if st.button(btn_tekst, key=f"btn_beboer_{i}"):
+            st.session_state.valgt_beboer_index = None if is_active else i
+            st.session_state.redigerer_beboer = False
+            st.rerun()
+        st.write("<br>", unsafe_allow_html=True)
 
 # Fane 3
 with fane3:
