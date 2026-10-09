@@ -4,11 +4,16 @@ import datetime
 import calendar
 import json
 import os
+import base64
 
 # ==========================================
-# 1. ZARZĄDZANIE DANYMI (Bezpieczny plik JSON)
+# 1. ZARZĄDZANIE DANYMI I PLIKAMI
 # ==========================================
 DB_PATH = "baza_danych.json"
+UPLOAD_DIR = "opplastede_filer"
+
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR)
 
 DOMYSLNE_DANE = {
     "alle_beboere": [
@@ -32,8 +37,7 @@ DOMYSLNE_DANE = {
     "beboer_data": {
         "zalmai44@gmail.com": {
             "dokumenter": [
-                {"tittel": "Tidligere klage på vannlekkasje", "filnavn": "Klage_Vannlekkasje_2024.pdf"},
-                {"tittel": "Foto av baderomstak", "filnavn": "Bilde_av_tak_bad.jpg"}
+                {"tittel": "Tidligere klage på vannlekkasje", "filnavn": "Klage_Vannlekkasje_2024.pdf"}
             ],
             "korrespondanse": [
                 {"dato": "09.10.2026", "emne": "Vannlekkasje fra taket på badet", "innhold": "Rapportert drypping fra overliggende leilighet (etasje oppgang B). Styret har avvist ansvar jf. eierseksjonsloven."}
@@ -80,6 +84,45 @@ if "db" not in st.session_state:
     st.session_state.db = wczytaj_dane()
 
 db = st.session_state.db
+
+def lagre_opplastet_fil(uploaded_file):
+    if uploaded_file is not None:
+        fil_sti = os.path.join(UPLOAD_DIR, uploaded_file.name)
+        with open(fil_sti, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        return uploaded_file.name
+    return None
+
+def vis_fil_knapper(filnavn, unik_id):
+    fil_sti = os.path.join(UPLOAD_DIR, filnavn)
+    if os.path.exists(fil_sti):
+        with open(fil_sti, "rb") as f:
+            bytes_data = f.read()
+        b64 = base64.b64encode(bytes_data).decode()
+        
+        # Sprawdzanie typu pliku dla poprawnego podglądu w przeglądarce
+        mime = "application/octet-stream"
+        if filnavn.endswith('.pdf'): mime = "application/pdf"
+        elif filnavn.endswith(('.png', '.jpg', '.jpeg')): mime = "image/jpeg"
+        elif filnavn.endswith('.txt'): mime = "text/plain"
+
+        col_b1, col_b2 = st.columns(2)
+        with col_b1:
+            st.markdown(f'''
+                <a href="data:{mime};base64,{b64}" target="_blank" style="text-decoration:none;">
+                    <div class="dok-knapp" style="text-align:center;">🔍 Se i nettleser</div>
+                </a>
+            ''', unsafe_allow_html=True)
+        with col_b2:
+            st.download_button(
+                label="📥 Last ned",
+                data=bytes_data,
+                file_name=filnavn,
+                mime=mime,
+                key=f"dl_{unik_id}"
+            )
+    else:
+        st.markdown(f'''<span style="color: #999; font-size: 0.8em; font-style: italic;">Fil ikke funnet på server ({filnavn})</span>''', unsafe_allow_html=True)
 
 # ==========================================
 # 2. DESIGN OG OPPSETT (Nordisk stil)
@@ -223,10 +266,11 @@ st.markdown('''
         text-transform: uppercase;
         letter-spacing: 1.2px;
         border: 1px solid #D1C7B7;
-        padding: 6px 14px;
+        padding: 7px 14px;
         border-radius: 4px;
         background-color: #FAF9F6;
         cursor: pointer;
+        display: inline-block;
     }
     .beboer-boks {
         background-color: #FFFFFF;
@@ -470,23 +514,23 @@ with fane2:
                 if not data_profil["dokumenter"]:
                     st.markdown('''<p style="color: #888888; font-style: italic; font-size: 0.9em;">Ingen dokumenter lagret.</p>''', unsafe_allow_html=True)
                 else:
-                    for d in data_profil["dokumenter"]:
+                    for idx_d, d in enumerate(data_profil["dokumenter"]):
                         st.markdown(f'''
-                        <div class="dok-kort">
-                            <div>
-                                <span style="font-weight: 600; color: #1A1A1A;">{d['tittel']}</span><br>
-                                <span style="color: #777; font-size: 0.8em;">{d['filnavn']}</span>
-                            </div>
-                            <span class="dok-knapp">LAST NED</span>
-                        </div>
+                        <div style="background-color: #FFFFFF; padding: 14px 18px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin-bottom: 10px; border-left: 3px solid #738269;">
+                            <div style="font-weight: 600; color: #1A1A1A; font-size: 1.02em;">{d['tittel']}</div>
+                            <div style="color: #777; font-size: 0.8em; margin-bottom: 8px;">{d['filnavn']}</div>
                         ''', unsafe_allow_html=True)
+                        vis_fil_knapper(d['filnavn'], f"pers_dok_{idx_d}_{valgt_epost}")
+                        st.markdown('</div>', unsafe_allow_html=True)
+                        
                 with st.expander("Last opp dokument"):
                     with st.form("form_last_opp_person", clear_on_submit=True):
                         pers_dok_tittel = st.text_input("Tittel på fil:")
                         pers_fil = st.file_uploader("Velg dokument:")
                         if st.form_submit_button("Lagre på beboer"):
                             if pers_dok_tittel and pers_fil:
-                                data_profil["dokumenter"].append({"tittel": pers_dok_tittel, "filnavn": pers_fil.name})
+                                lagret_navn = lagre_opplastet_fil(pers_fil)
+                                data_profil["dokumenter"].append({"tittel": pers_dok_tittel, "filnavn": lagret_navn})
                                 zapisz_dane(db)
                                 st.success("Lagret!")
                                 st.rerun()
@@ -586,13 +630,15 @@ with fane3:
         with c1:
             if st.button("Lagre"):
                 if valgt_m and tittel_dok and opplastet_fil:
-                    db["bygg_mapper"][valgt_m].append({"tittel": tittel_dok, "filnavn": opplastet_fil.name})
+                    lagret_navn = lagre_opplastet_fil(opplastet_fil)
+                    db["bygg_mapper"][valgt_m].append({"tittel": tittel_dok, "filnavn": lagret_navn})
                     db["vis_last_opp_form"] = False
                     zapisz_dane(db)
                     st.rerun()
         with c2:
             if st.button("Avbryt", key="avbryt_last_opp"):
                 db["vis_last_opp_form"] = False
+                zapisz_dane(db)
                 st.rerun()
         st.markdown('''</div>''', unsafe_allow_html=True)
 
@@ -611,16 +657,14 @@ with fane3:
         if not filer:
             st.markdown('''<p style="color: #999999; font-style: italic; font-size: 0.88em; margin-bottom: 16px;">Ingen filer.</p>''', unsafe_allow_html=True)
         else:
-            for fil in filer:
+            for idx_f, fil in enumerate(filer):
                 st.markdown(f'''
-                <div class="dok-kort">
-                    <div>
-                        <span style="font-family: 'Playfair Display', serif; font-size: 1.05em; color: #1A1A1A; font-weight: 600;">{fil['tittel']}</span><br>
-                        <span style="font-size: 0.8em; color: #777777;">{fil['filnavn']}</span>
-                    </div>
-                    <span class="dok-knapp">LAST NED</span>
-                </div>
+                <div style="background-color: #FFFFFF; padding: 18px 22px; border-radius: 5px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03); margin-bottom: 10px; border-left: 3px solid #738269;">
+                    <div style="font-family: 'Playfair Display', serif; font-size: 1.05em; color: #1A1A1A; font-weight: 600;">{fil['tittel']}</div>
+                    <div style="font-size: 0.8em; color: #777777; margin-bottom: 10px;">{fil['filnavn']}</div>
                 ''', unsafe_allow_html=True)
+                vis_fil_knapper(fil['filnavn'], f"arkiv_{mappe_navn}_{idx_f}")
+                st.markdown('</div>', unsafe_allow_html=True)
             st.write("<br>", unsafe_allow_html=True)
 
 # Fane 4
