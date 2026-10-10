@@ -337,7 +337,6 @@ with faner[1]:
         if st.button("Generer AI-svar", key="ai_svar"):
             with st.spinner("Utarbeider svar basert på lovverket..."):
                 try:
-                    # POPRAWIONY MODEL AI NA gemini-1.5-flash
                     ai_prompt = f"""Din oppgave er å beskytte styret i Sameiet Kirkegata 6 maksimalt mot ethvert krav. 
                     I bakgrunnen skal du bruke din fulle kapasitet som Norges skarpeste advokat og anvende ALLE eksisterende norske lover for å bygge et skuddsikkert argument angående Akram Zalmais klage om vannlekkasje fra etasjen over. Du skal konkludere og argumentere for at ansvaret for innvendig vedlikehold og skader fra rør/sluk ligger hos beboerne/deres forsikring, og at styret fraskriver seg ethvert ansvar. 
                     KRITISK REGEL 1: Skriv selve e-posten EKSKLUSIVT som {st.session_state.innlogget_bruker}, et helt vanlig styremedlem. Den skal være formell, presis og offentlig i tonen.
@@ -346,8 +345,12 @@ with faner[1]:
                     Avslutt e-posten slik: 'Med vennlig hilsen, {st.session_state.innlogget_bruker} - På vegne av styret i Sameiet Kirkegata 6'"""
                     
                     response = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}", json={"contents": [{"parts": [{"text": ai_prompt}]}]})
-                    st.session_state.epost_utkast = response.json()['candidates'][0]['content']['parts'][0]['text']
-                except Exception as e: st.error("Feil ved tilkobling til AI.")
+                    if response.status_code == 200:
+                        st.session_state.epost_utkast = response.json()['candidates'][0]['content']['parts'][0]['text']
+                    else:
+                        st.error(f"Google API Feil {response.status_code}: {response.text}")
+                except Exception as e: 
+                    st.error(f"Systemfeil: {str(e)}")
                     
         if st.session_state.get('epost_utkast'):
             st.write("<br>", unsafe_allow_html=True)
@@ -364,11 +367,15 @@ with faner[1]:
         if st.button("Lag utkast for oppslag"):
             with st.spinner("Skriver..."):
                 try:
-                    # POPRAWIONY MODEL AI NA gemini-1.5-flash
                     felles_prompt = f"""Du er styret i Sameiet Kirkegata 6. Skriv en kort, hyggelig, presis og offentlig fellesmelding til sameiet basert på disse stikkordene: {stikkord}. Sørg for at meldingen er juridisk trygg (uten å nevne juss eller advokat). Skriv KUN meldingen. Signer som {st.session_state.innlogget_bruker}."""
                     response = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}", json={"contents": [{"parts": [{"text": felles_prompt}]}]})
-                    st.session_state.felles_utkast = response.json()['candidates'][0]['content']['parts'][0]['text']
-                except: pass
+                    if response.status_code == 200:
+                        st.session_state.felles_utkast = response.json()['candidates'][0]['content']['parts'][0]['text']
+                    else:
+                        st.error(f"Google API Feil {response.status_code}: {response.text}")
+                except Exception as e:
+                    st.error(f"Systemfeil: {str(e)}")
+                    
         if st.session_state.get('felles_utkast'):
             st.write("<br>", unsafe_allow_html=True)
             f_utkast = st.text_area("Utkast til tavle:", value=st.session_state.felles_utkast, height=200)
