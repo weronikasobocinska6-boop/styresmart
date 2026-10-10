@@ -14,7 +14,7 @@ from supabase import create_client, Client
 st.set_page_config(page_title="SmartStyre | Kirkegata 6", page_icon="🏢", layout="wide")
 
 # ==========================================
-# 2. DESIGN (Modern Premium SaaS & Nordic Elegance)
+# 2. DESIGN (Modern Premium SaaS & Nordic Elegance + Mobile Fix)
 # ==========================================
 st.markdown('''
 <style>
@@ -79,6 +79,16 @@ st.markdown('''
     input:focus, textarea:focus { border-color: #3B82F6 !important; box-shadow: 0 0 0 1px #3B82F6 !important; }
     
     .nordic-meta { font-size: 0.75em; text-transform: uppercase; letter-spacing: 1.5px; color: #94A3B8; margin-bottom: 16px; border-bottom: 1px solid #F1F5F9; padding-bottom: 8px; font-weight: 700; }
+    
+    /* FIX FOR MOBILSKJERMER (Responsive Design) */
+    @media (max-width: 768px) {
+        h1 { font-size: 2.5rem !important; margin-bottom: 20px !important; }
+        .nordic-card { padding: 20px !important; }
+        .kpi-tall { font-size: 2rem !important; }
+        .kalender-table th { padding: 4px; font-size: 0.7em; }
+        .kalender-table td { padding: 4px; height: 60px; font-size: 0.75em; }
+        .event-badge { padding: 2px 4px; font-size: 0.7em; }
+    }
 </style>
 ''', unsafe_allow_html=True)
 
@@ -128,7 +138,6 @@ def wczytaj_dane():
                     if k not in dane: dane[k] = DOMYSLNE_DANE[k]
                 return dane
             else:
-                # Jeśli tabela jest pusta, załaduj domyślne dane
                 supabase.table("smartstyre_data").insert({"id": 1, "json_data": DOMYSLNE_DANE}).execute()
         except Exception as e:
             pass
@@ -152,7 +161,6 @@ def lagre_opplastet_fil(uploaded_file):
         file_bytes = uploaded_file.getvalue()
         file_name = uploaded_file.name
         try:
-            # Slett først hvis filen eksisterer for å tillate oppdatering
             supabase.storage.from_("dokumenty").remove([file_name])
         except: pass
         try:
