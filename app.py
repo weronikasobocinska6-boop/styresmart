@@ -4,7 +4,7 @@ import pandas as pd
 # 1. KONFIGURASJON AV SIDEN
 st.set_page_config(page_title="SmartStyre | Kirkegata 6", layout="wide")
 
-# 2. SIKKER CSS (Bare farger og stil, ingen HTML som ødelegger koden)
+# 2. SIKKER CSS
 st.markdown("""
 <style>
     .stApp { background-color: #F8FAFC; }
@@ -37,34 +37,33 @@ if 'beboere_db' not in st.session_state:
         "Rolle": ["Eier", "Leietaker", "Eier"]
     })
 
-# 4. SIKKER INNLOGGINGSMEKANISME
-def logg_inn_sjekk():
-    if st.session_state.passord_felt == "1234":
-        st.session_state.logged_in = True
-    else:
-        st.session_state.feil_passord = True
-
-def logg_ut():
-    st.session_state.logged_in = False
-
-# 5. LOGG INN SKJERM (100% Norsk)
+# 4. LOGG INN SKJERM (100% Norsk, Med Brukernavn)
 if not st.session_state.logged_in:
-    st.title("SmartStyre - Logg inn")
-    st.write("Vennligst oppgi passord for å få tilgang til styreportalen.")
+    st.title("SmartStyre")
+    st.write("Vennligst logg inn for å få tilgang til styreportalen.")
     
-    st.text_input("Passord (tast 1234):", type="password", key="passord_felt")
-    st.button("Logg inn", on_click=logg_inn_sjekk)
+    # Dodane pole loginu (Brukernavn)
+    brukernavn = st.selectbox("Velg bruker:", ["Weronika B.", "Ine", "Maria"])
+    passord = st.text_input("Passord (tast 1234):", type="password")
     
-    if st.session_state.get('feil_passord', False):
-        st.error("Feil passord. Vennligst prøv igjen.")
+    # Prosty, niezawodny przycisk
+    if st.button("Logg inn"):
+        if passord == "1234":
+            st.session_state.logged_in = True
+            st.session_state.brukernavn = brukernavn
+            st.rerun()
+        else:
+            st.error("Feil passord. Vennligst prøv igjen.")
 
-# 6. HOVEDAPP (100% Norsk)
+# 5. HOVEDAPP
 else:
     # Brukervelger oppe til høyre
     col1, col2 = st.columns([8, 2])
     with col2:
-        active_user = st.selectbox("Aktiv bruker:", ["Weronika B.", "Ine", "Maria"])
-        st.button("Logg ut", on_click=logg_ut)
+        st.write(f"Aktiv bruker: **{st.session_state.get('brukernavn', 'Weronika B.')}**")
+        if st.button("Logg ut"):
+            st.session_state.logged_in = False
+            st.rerun()
 
     # Sidemeny (Venstre)
     st.sidebar.title("SmartStyre")
@@ -78,7 +77,7 @@ else:
 
     # Innhold for fanene
     if menu == "Oversikt":
-        st.title(f"Velkommen tilbake, {active_user}!")
+        st.title(f"Velkommen tilbake, {st.session_state.get('brukernavn', 'Weronika B.').split(' ')[0]}!")
         
         colA, colB, colC = st.columns(3)
         colA.metric("Aktive saker", "1", "Krever oppfølging")
@@ -114,11 +113,7 @@ else:
                     ny_beboer = pd.DataFrame({"Seksjon": [s], "Navn": [n], "E-post": [e], "Telefon": [t], "Rolle": [r]})
                     st.session_state.beboere_db = pd.concat([st.session_state.beboere_db, ny_beboer], ignore_index=True)
                     st.success("Beboer lagt til!")
-                    # Trygg oppdatering av siden
-                    if hasattr(st, 'rerun'):
-                        st.rerun()
-                    else:
-                        st.experimental_rerun()
+                    st.rerun()
 
     elif menu == "Regnskap":
         st.title("Regnskap og Budsjett")
