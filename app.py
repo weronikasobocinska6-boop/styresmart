@@ -14,7 +14,7 @@ from supabase import create_client, Client
 st.set_page_config(page_title="SmartStyre | Kirkegata 6", page_icon="🏢", layout="wide")
 
 # ==========================================
-# 2. DESIGN (Modern Premium SaaS)
+# 2. DESIGN (Modern Premium SaaS & Nordic Elegance + Mobile Fix)
 # ==========================================
 st.markdown('''
 <style>
@@ -337,6 +337,7 @@ with faner[1]:
         if st.button("Generer AI-svar", key="ai_svar"):
             with st.spinner("Utarbeider svar basert på lovverket..."):
                 try:
+                    # POPRAWIONY MODEL AI NA gemini-3.5-flash
                     ai_prompt = f"""Din oppgave er å beskytte styret i Sameiet Kirkegata 6 maksimalt mot ethvert krav. 
                     I bakgrunnen skal du bruke din fulle kapasitet som Norges skarpeste advokat og anvende ALLE eksisterende norske lover for å bygge et skuddsikkert argument angående Akram Zalmais klage om vannlekkasje fra etasjen over. Du skal konkludere og argumentere for at ansvaret for innvendig vedlikehold og skader fra rør/sluk ligger hos beboerne/deres forsikring, og at styret fraskriver seg ethvert ansvar. 
                     KRITISK REGEL 1: Skriv selve e-posten EKSKLUSIVT som {st.session_state.innlogget_bruker}, et helt vanlig styremedlem. Den skal være formell, presis og offentlig i tonen.
@@ -344,7 +345,7 @@ with faner[1]:
                     KRITISK REGEL 3: KUN skriv selve e-posten. Ingen kommentarer før eller etter.
                     Avslutt e-posten slik: 'Med vennlig hilsen, {st.session_state.innlogget_bruker} - På vegne av styret i Sameiet Kirkegata 6'"""
                     
-                    response = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}", json={"contents": [{"parts": [{"text": ai_prompt}]}]})
+                    response = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}", json={"contents": [{"parts": [{"text": ai_prompt}]}]})
                     if response.status_code == 200:
                         st.session_state.epost_utkast = response.json()['candidates'][0]['content']['parts'][0]['text']
                     else:
@@ -367,8 +368,9 @@ with faner[1]:
         if st.button("Lag utkast for oppslag"):
             with st.spinner("Skriver..."):
                 try:
+                    # POPRAWIONY MODEL AI NA gemini-3.5-flash
                     felles_prompt = f"""Du er styret i Sameiet Kirkegata 6. Skriv en kort, hyggelig, presis og offentlig fellesmelding til sameiet basert på disse stikkordene: {stikkord}. Sørg for at meldingen er juridisk trygg (uten å nevne juss eller advokat). Skriv KUN meldingen. Signer som {st.session_state.innlogget_bruker}."""
-                    response = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}", json={"contents": [{"parts": [{"text": felles_prompt}]}]})
+                    response = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}", json={"contents": [{"parts": [{"text": felles_prompt}]}]})
                     if response.status_code == 200:
                         st.session_state.felles_utkast = response.json()['candidates'][0]['content']['parts'][0]['text']
                     else:
@@ -611,3 +613,4 @@ with faner[5]:
     st.write("<br>", unsafe_allow_html=True)
     db_bytes = json.dumps(db, ensure_ascii=False, indent=4).encode('utf-8')
     st.download_button(label="💾 Last ned hele databasen", data=db_bytes, file_name=f"SmartStyre_Backup_K6_{datetime.date.today().strftime('%Y-%m-%d')}.json", mime="application/json")
+    
