@@ -5,7 +5,7 @@ import calendar
 import json
 import base64
 
-# SUPABASE - nowa chmura
+# SUPABASE - chmura
 from supabase import create_client, Client
 
 # ==========================================
@@ -14,7 +14,7 @@ from supabase import create_client, Client
 st.set_page_config(page_title="SmartStyre | Kirkegata 6", page_icon="🏢", layout="wide")
 
 # ==========================================
-# 2. DESIGN (Modern Premium SaaS & Nordic Elegance + Mobile Fix)
+# 2. DESIGN (Modern Premium SaaS)
 # ==========================================
 st.markdown('''
 <style>
@@ -110,13 +110,32 @@ def init_supabase():
 
 supabase = init_supabase()
 
+# PEŁNA LISTA 16 MIESZKAŃCÓW (ODZYSKANA)
 DOMYSLNE_DANE = {
     "alle_beboere": [
         {"Navn": "Akram Zalmai", "E-post": "zalmai44@gmail.com", "Seksjon": "Seksjon 1"},
         {"Navn": "Galina Novikova", "E-post": "ngiv1005@gmail.com", "Seksjon": "Seksjon 2"},
-        {"Navn": "etasje oppgang B", "E-post": "asammad35@hotmail.com", "Seksjon": "Oppgang B"}
+        {"Navn": "etasje oppgang B", "E-post": "asammad35@hotmail.com", "Seksjon": "Oppgang B"},
+        {"Navn": "Gina Hetlevik", "E-post": "gin-he@online.no", "Seksjon": "Seksjon 3"},
+        {"Navn": "Gry Kjersti Berget", "E-post": "gberget@deloitte.no", "Seksjon": "Seksjon 4"},
+        {"Navn": "Ingeborg Skoveng", "E-post": "ingeborg@skoveng.no", "Seksjon": "Seksjon 5"},
+        {"Navn": "Ingelise Brynlund", "E-post": "ingelise.brynlund@gmail.com", "Seksjon": "Seksjon 6"},
+        {"Navn": "Mads K", "E-post": "madk1515@gmail.com", "Seksjon": "Seksjon 7"},
+        {"Navn": "Stig Schmidt", "E-post": "sschm@frisurf.no", "Seksjon": "Seksjon 8"},
+        {"Navn": "Terje Aarborgh", "E-post": "taarbogh@gmail.com", "Seksjon": "Seksjon 9"},
+        {"Navn": "Ine Foss", "E-post": "ine@kvikkerehoder.no", "Seksjon": "Seksjon 10"},
+        {"Navn": "Tom Bergersen", "E-post": "tom.bergersen1@gmail.com", "Seksjon": "Seksjon 11"},
+        {"Navn": "Sultan Bhatti", "E-post": "Sultan.bhatti91@outlook.com", "Seksjon": "Seksjon 12"},
+        {"Navn": "Cecilia", "E-post": "ce.ma.andersson@gmail.com", "Seksjon": "Seksjon 13"},
+        {"Navn": "Weronika Sobocinska", "E-post": "weronikasobocinska6@gmail.com", "Seksjon": "Seksjon 14"},
+        {"Navn": "Mona Schmidt", "E-post": "moirol@wemail.no", "Seksjon": "Seksjon 15"}
     ],
-    "beboer_data": {},
+    "beboer_data": {
+        "zalmai44@gmail.com": {
+            "dokumenter": [{"tittel": "Tidligere klage på vannlekkasje", "filnavn": "Klage_Vannlekkasje_2024.pdf"}],
+            "korrespondanse": [{"dato": "09.10.2026", "emne": "Vannlekkasje fra taket på badet", "innhold": "Rapportert drypping fra overliggende leilighet (etasje oppgang B). Styret har avvist ansvar jf. eierseksjonsloven."}]
+        }
+    },
     "bygg_mapper": {
         "Forsikring": [],
         "Tegninger & Bygg": [],
@@ -134,6 +153,12 @@ def wczytaj_dane():
                 dane = res.data[0]["json_data"]
                 if isinstance(dane, str): dane = json.loads(dane)
                 if not dane: dane = DOMYSLNE_DANE.copy()
+                
+                # MECHANIZM ODZYSKIWANIA MIESZKAŃCÓW DO CHMURY
+                if "alle_beboere" not in dane or len(dane["alle_beboere"]) <= 3:
+                    dane["alle_beboere"] = DOMYSLNE_DANE["alle_beboere"]
+                    supabase.table("smartstyre_data").update({"json_data": dane}).eq("id", 1).execute()
+                
                 for k in DOMYSLNE_DANE:
                     if k not in dane: dane[k] = DOMYSLNE_DANE[k]
                 return dane
@@ -312,6 +337,7 @@ with faner[1]:
         if st.button("Generer AI-svar", key="ai_svar"):
             with st.spinner("Utarbeider svar basert på lovverket..."):
                 try:
+                    # POPRAWIONY MODEL AI NA gemini-1.5-flash
                     ai_prompt = f"""Din oppgave er å beskytte styret i Sameiet Kirkegata 6 maksimalt mot ethvert krav. 
                     I bakgrunnen skal du bruke din fulle kapasitet som Norges skarpeste advokat og anvende ALLE eksisterende norske lover for å bygge et skuddsikkert argument angående Akram Zalmais klage om vannlekkasje fra etasjen over. Du skal konkludere og argumentere for at ansvaret for innvendig vedlikehold og skader fra rør/sluk ligger hos beboerne/deres forsikring, og at styret fraskriver seg ethvert ansvar. 
                     KRITISK REGEL 1: Skriv selve e-posten EKSKLUSIVT som {st.session_state.innlogget_bruker}, et helt vanlig styremedlem. Den skal være formell, presis og offentlig i tonen.
@@ -319,7 +345,7 @@ with faner[1]:
                     KRITISK REGEL 3: KUN skriv selve e-posten. Ingen kommentarer før eller etter.
                     Avslutt e-posten slik: 'Med vennlig hilsen, {st.session_state.innlogget_bruker} - På vegne av styret i Sameiet Kirkegata 6'"""
                     
-                    response = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}", json={"contents": [{"parts": [{"text": ai_prompt}]}]})
+                    response = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}", json={"contents": [{"parts": [{"text": ai_prompt}]}]})
                     st.session_state.epost_utkast = response.json()['candidates'][0]['content']['parts'][0]['text']
                 except Exception as e: st.error("Feil ved tilkobling til AI.")
                     
@@ -338,8 +364,9 @@ with faner[1]:
         if st.button("Lag utkast for oppslag"):
             with st.spinner("Skriver..."):
                 try:
+                    # POPRAWIONY MODEL AI NA gemini-1.5-flash
                     felles_prompt = f"""Du er styret i Sameiet Kirkegata 6. Skriv en kort, hyggelig, presis og offentlig fellesmelding til sameiet basert på disse stikkordene: {stikkord}. Sørg for at meldingen er juridisk trygg (uten å nevne juss eller advokat). Skriv KUN meldingen. Signer som {st.session_state.innlogget_bruker}."""
-                    response = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}", json={"contents": [{"parts": [{"text": felles_prompt}]}]})
+                    response = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}", json={"contents": [{"parts": [{"text": felles_prompt}]}]})
                     st.session_state.felles_utkast = response.json()['candidates'][0]['content']['parts'][0]['text']
                 except: pass
         if st.session_state.get('felles_utkast'):
