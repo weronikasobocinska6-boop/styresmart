@@ -186,7 +186,7 @@ db = st.session_state.db
 def send_ekte_epost(mottaker_epost, emne, innhold):
     sender = "styret@kirkegata6.no"
     password = "123Kirke987G"
-    smtp_server = "smtp.gmail.com"  # Justér evt. til din e-postleverandør (f.eks. Outlook/Office365 om nødvendig)
+    smtp_server = "smtp.gmail.com"
     smtp_port = 587
 
     try:
@@ -265,4 +265,79 @@ def vis_fil_rad(filnavn, tittel, unik_id, er_admin_slett=None):
             st.markdown(f'''<div style="text-align: right; margin-bottom: 15px;"><a href="data:{mime};base64,{b64}" target="_blank" style="color: #3B82F6; font-weight: 600; text-decoration: underline; font-family: 'Inter', sans-serif;">↗ Åpne filen i en ny fane</a></div>''', unsafe_allow_html=True)
             if mime == "image/jpeg": st.image(bytes_data, use_container_width=True)
             elif mime == "application/pdf":
-                pdf_display = f'<iframe src="data:application/pdf;base64,{b64}"
+                pdf_display = f'<iframe src="data:application/pdf;base64,{b64}" width="100%" height="650px" type="application/pdf" style="border-radius: 8px; border: 1px solid #E2E8F0;"></iframe>'
+                st.markdown(pdf_display, unsafe_allow_html=True)
+            else:
+                try: st.text(bytes_data.decode('utf-8'))
+                except: st.info("Denne filtypen kan kun lastes ned.")
+            st.divider()
+            if st.button("Lukk vindu", use_container_width=True, key=f"lukk_{unik_id}"):
+                st.session_state[f"vis_popup_{unik_id}"] = False
+                st.rerun()
+        vis_modal()
+
+# ==========================================
+# 4. SIKKERHET (INNLOGGING)
+# ==========================================
+if "er_logget_inn" not in st.session_state: st.session_state.er_logget_inn = False
+
+if not st.session_state.er_logget_inn:
+    st.markdown("<br><br><br>", unsafe_allow_html=True)
+    c1, c2, c3 = st.columns([1, 1.2, 1])
+    with c2:
+        st.markdown('''<div class="nordic-card" style="text-align: center; padding: 50px;"><h1 style="margin-bottom: 40px !important;">SmartStyre</h1>''', unsafe_allow_html=True)
+        with st.form("login"):
+            bruk = st.text_input("Brukernavn:")
+            passw = st.text_input("Passord:", type="password")
+            st.write("<br>", unsafe_allow_html=True)
+            if st.form_submit_button("Logg inn", use_container_width=True):
+                if bruk.strip().lower() == "kirkegata6" and passw == "Styret2026":
+                    st.session_state.er_logget_inn = True
+                    st.rerun()
+                else: st.error("Feil brukernavn eller passord.")
+        st.markdown("</div>", unsafe_allow_html=True)
+    st.stop()
+
+if "innlogget_bruker" not in st.session_state: st.session_state.innlogget_bruker = "Weronika Bhatti"
+
+# ==========================================
+# 5. SIDEBAR
+# ==========================================
+with st.sidebar:
+    st.markdown("<h2 style='text-align: center; margin-top: 30px; font-size: 2em;'>SmartStyre</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 0.8em; letter-spacing: 3px; color: #94A3B8; margin-bottom: 40px;'>KIRKEGATA 6</p>", unsafe_allow_html=True)
+    
+    if ai_klar and supabase:
+        st.markdown("<div style='background-color: #F0FDF4; padding: 12px; border-radius: 8px; border: 1px solid #BBF7D0; text-align: center; margin-bottom: 30px;'><span style='color: #15803D; font-weight: 600; font-size: 0.85em; font-family: \"Inter\", sans-serif;'>✓ Skyserver og AI Aktiv</span></div>", unsafe_allow_html=True)
+    
+    styremedlemmer = ["Weronika Bhatti", "Ine Foss", "Maria Frang"]
+    valgt_m = st.selectbox("Aktiv Profil:", styremedlemmer, index=styremedlemmer.index(st.session_state.innlogget_bruker))
+    if valgt_m != st.session_state.innlogget_bruker:
+        st.session_state.innlogget_bruker = valgt_m
+        st.rerun()
+
+    st.write("---")
+    st.markdown('''<p style="font-family: 'Inter', sans-serif; font-weight: 600; color: #64748B; font-size: 0.85em; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px;">Styrets sammensetning</p>''', unsafe_allow_html=True)
+    for m in styremedlemmer:
+        if m == st.session_state.innlogget_bruker: st.markdown(f"<span style='color: #F8FAFC; font-weight: 600;'>{m} (Du)</span>", unsafe_allow_html=True)
+        else: st.markdown(f"<span style='color: #94A3B8;'>{m}</span>", unsafe_allow_html=True)
+        
+    st.write("---")
+    if st.button("Logg ut", use_container_width=True):
+        st.session_state.er_logget_inn = False
+        st.rerun()
+
+# ==========================================
+# 6. HOVEDAPP / FANER
+# ==========================================
+st.markdown("<h1>SmartStyre</h1>", unsafe_allow_html=True)
+
+faner = st.tabs(["📊 Oversikt", "✉️ Innboks", "👥 Beboere", "📂 Arkiv", "📅 Kalender", "⚙️ Sikkerhet"])
+
+# --- Fane 1: Oversikt ---
+with faner[0]:
+    st.write("<br>", unsafe_allow_html=True)
+    c1, c2, c3 = st.columns(3)
+    with c1: st.markdown(f"<div class='kpi-boks'><div class='kpi-tittel'>Registrerte Seksjoner</div><div class='kpi-tall'>{len(db['alle_beboere'])}</div></div>", unsafe_allow_html=True)
+    with c2:
+        moter = len([o for o
