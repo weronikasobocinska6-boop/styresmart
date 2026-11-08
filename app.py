@@ -618,4 +618,60 @@ with faner[4]:
         table_html = "<table class='kalender-table'><thead><tr>"
         for d in ukedager: table_html += f"<th>{d}</th>"
         table_html += "</tr></thead><tbody><tr>"
-        for _ in range(forste
+        for _ in range(forste_ukedag):
+            table_html += "<td class='empty'></td>"
+            
+        gjeldende_dag_i_uke = forste_ukedag
+        for dag in range(1, dager_i_mnd + 1):
+            if gjeldende_dag_i_uke == 7:
+                table_html += "</tr><tr>"; gjeldende_dag_i_uke = 0
+            dato_str = f"{valgt_aar}-{valgt_maned:02d}-{dag:02d}"
+            hendelser = [o for o in db["kalender_oppgaver"] if o["dato"] == dato_str]
+            td_class = "has-event" if hendelser else ""
+            table_html += f"<td class='{td_class}'><strong>{dag}</strong>"
+            for h in hendelser:
+                tid_visning = f"kl. {h.get('tid', '')} " if h.get('tid') else ""
+                table_html += f"<br><span class='event-badge'>{tid_visning}{h['oppgave']}</span>"
+            table_html += "</td>"; gjeldende_dag_i_uke += 1
+        while gjeldende_dag_i_uke < 7: table_html += "<td class='empty'></td>"; gjeldende_dag_i_uke += 1
+        table_html += "</tr></tbody></table>"
+        st.markdown(table_html, unsafe_allow_html=True)
+        
+    with k_fane2:
+        st.write("<br>", unsafe_allow_html=True)
+        st.markdown('''<h4 style="font-family: 'Playfair Display', serif;">Alle aktiviteter</h4>''', unsafe_allow_html=True)
+        st.write("<br>", unsafe_allow_html=True)
+        for oppg in db["kalender_oppgaver"]:
+            st.markdown(f'''<div class="nordic-card" style="border-top-color:#10B981; padding:30px;">
+                <div style="font-size:0.8em; font-weight:700; color:#10B981; text-transform:uppercase; letter-spacing: 1.5px;">{oppg['dato']} - kl. {oppg.get('tid','')}</div>
+                <h4 style="margin:10px 0; font-size: 1.4em;">{oppg['oppgave']}</h4>
+                <p style="margin:0; color:#475569; line-height: 1.6;">{oppg.get('detaljer','')}</p>
+            </div>''', unsafe_allow_html=True)
+            if st.button("Slett hendelse", key=f"s_kal_{oppg['id']}"):
+                db["kalender_oppgaver"] = [o for o in db["kalender_oppgaver"] if o["id"] != oppg["id"]]
+                zapisz_dane(db); st.rerun()
+            st.write("<br>", unsafe_allow_html=True)
+
+    with k_fane3:
+        st.write("<br>", unsafe_allow_html=True)
+        st.markdown('''<h4 style="font-family: 'Playfair Display', serif;">Ny aktivitet</h4>''', unsafe_allow_html=True)
+        with st.form("kal_ny"):
+             k_dato = st.date_input("Dato:")
+             k_tid = st.text_input("Klokkeslett (eks. 18:00):", "18:00")
+             k_tittel = st.text_input("Tittel:")
+             k_det = st.text_area("Beskrivelse:")
+             st.write("<br>", unsafe_allow_html=True)
+             if st.form_submit_button("Lagre i kalender"):
+                 ny_id = max([o["id"] for o in db["kalender_oppgaver"]], default=0) + 1
+                 db["kalender_oppgaver"].append({"id": ny_id, "dato": str(k_dato), "tid": k_tid, "oppgave": k_tittel, "detaljer": k_det, "type": "Aktivitet"})
+                 db["kalender_oppgaver"] = sorted(db["kalender_oppgaver"], key=lambda k: k['dato'])
+                 zapisz_dane(db); st.rerun()
+
+# --- Fane 6: Sikkerhet ---
+with faner[5]:
+    st.markdown("### ⚙️ Sikkerhet & Database-Backup")
+    st.write("<br>", unsafe_allow_html=True)
+    st.write("Last ned en komplett kopi av sky-databasen for styret (GDPR-kompatibelt).")
+    st.write("<br>", unsafe_allow_html=True)
+    db_bytes = json.dumps(db, ensure_ascii=False, indent=4).encode('utf-8')
+    st.download_button(label="💾 Last ned hele databasen", data=db_bytes, file_name=f"SmartStyre_Backup_K6_{datetime.date.today().strftime('%Y-%m-%d')}.json", mime="application/json")
